@@ -1,5 +1,7 @@
 # Echoes
 
+Developed by LLL Inc.'s dev team — visit us at https://www.live-laugh-love.world
+
 A free, no-login community wall where anyone can create interactive note walls by dragging decorative notepads onto a themed canvas. Like a digital corkboard for testimonials, comments, encouragement, reviews, feedback, and etc — visual, playful, and drag-and-drop.
 
 ## Features
