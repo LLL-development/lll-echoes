@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
 import { createHash } from 'crypto';
 
@@ -10,7 +11,7 @@ export async function GET(
 
   const { data: wall, error: wallError } = await supabase
     .from('walls')
-    .select('id, slug, mode, theme, allow_contributions, created_at, title, description, embed_bg_color')
+    .select('id, slug, mode, theme, allow_contributions, created_at, title, description')
     .eq('slug', slug)
     .single();
 
@@ -71,14 +72,13 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { allow_contributions, theme, title, description, embed_bg_color } = body;
+  const { allow_contributions, theme, title, description } = body;
 
   const updates: Record<string, any> = {};
   if (allow_contributions !== undefined) updates.allow_contributions = allow_contributions;
   if (theme !== undefined) updates.theme = theme;
-  if (title !== undefined) updates.title = title;
-  if (description !== undefined) updates.description = description;
-  if (embed_bg_color !== undefined) updates.embed_bg_color = embed_bg_color;
+  if (title !== undefined) updates.title = title || null;
+  if (description !== undefined) updates.description = description || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
@@ -100,6 +100,9 @@ export async function PATCH(
     const cacheKey = createHash('sha256').update(`wall-screenshot-${slug}`).digest('hex').substring(0, 16);
     await supabase.from('_screenshot_cache').delete().eq('key', cacheKey);
   }
+
+  // Invalidate the wall page cache so it fetches fresh data
+  revalidatePath(`/w/${slug}`);
 
   return NextResponse.json({ success: true });
 }

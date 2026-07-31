@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { theme, mode = 'PUBLIC', title, description, embed_bg_color } = body;
+    const { theme, mode = 'PUBLIC', title, description } = body;
 
     if (!theme) {
       return NextResponse.json(
@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
         allow_contributions: true,
         title: title || null,
         description: description || null,
-        embed_bg_color: embed_bg_color || '#ffffff',
       })
       .select()
       .single();

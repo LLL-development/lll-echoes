@@ -5,7 +5,6 @@ export interface Wall {
   theme: string;
   title: string | null;
   description: string | null;
-  embed_bg_color: string;
   allow_contributions: boolean;
   created_at: string;
 }
@@ -22,6 +21,7 @@ export interface Note {
   id: string;
   wall_id: string;
   image_url: string | null;
+  content: string | null;
   x: number;
   y: number;
   width: number;

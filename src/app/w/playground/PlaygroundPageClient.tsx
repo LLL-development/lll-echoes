@@ -28,7 +28,7 @@ export default function PlaygroundPageClient({ wall, notes: initialNotes, templa
 
   return (
     <WallViewer
-      wall={{ ...wall, allow_contributions: true }}
+      wall={{ ...wall, title: 'Restaurant', allow_contributions: true }}
       notes={notes}
       templates={templates}
       isPlayground

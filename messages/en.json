@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "backToHome": "← Back to home",
+    "settings": "⚙ Settings",
+    "deleteWall": "Delete Wall"
+  },
+  "hint": {
+    "rotateDevice": "Rotate for best experience"
+  },
+  "toolbar": {
+    "open": "Open toolbar",
+    "close": "Close toolbar"
+  },
+  "canvas": {
+    "empty": "No notes yet on this wall.",
+    "addFirst": "Add the first note",
+    "subtitleDefault": "A space for your thoughts",
+    "subtitleEditMode": "Drag the blue handles to resize notes",
+    "editModeHint": "Drag notes around to arrange them"
+  },
+  "note": {
+    "authorDefault": "Anonymous",
+    "resize": "Resize Notes",
+    "resizeDone": "Done Resizing",
+    "delete": "Delete note",
+    "confirmDelete": "Delete this note?",
+    "empty": "Empty note",
+    "tapToWrite": "Tap to write..."
+  },
+  "share": {
+    "button": "Share",
+    "playgroundButton": "Create your own wall to share"
+  },
+  "playground": {
+    "cta": "Create My Digital Wall"
+  },
+  "title": {
+    "edit": "Edit title"
+  },
+  "confirm": {
+    "deleteWall": "Are you sure you want to delete this wall? This cannot be undone."
+  },
+  "toast": {
+    "wallDeleted": "Wall deleted",
+    "deleteWallFailed": "Failed to delete wall",
+    "playgroundRefreshing": "Preparing your playground session. Please try again.",
+    "noDeleteAccess": "Cannot delete — please refresh and try again.",
+    "noEditAccess": "No edit access. You can only view this wall.",
+    "seededNotesInfo": "These notes are here for you to try things out! They'll reset when you refresh the page. Feel free to add your own notes, too!",
+    "deleteNoteFailed": "Failed to delete note",
+    "saveChangesFailed": "Failed to save changes"
+  }
+}

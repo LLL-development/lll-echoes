@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation';
-import WallViewer from '@/components/wall/WallViewer';
+import WallPageClient from './WallPageClient';
 
 export const dynamic = 'force-dynamic';
 
 async function fetchWall(slug: string) {
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3500'}/api/walls/${slug}`,
-    { headers: { 'Cache-Control': 'no-cache' } }
+    { headers: { 'Cache-Control': 'no-cache' }, cache: 'no-store' }
   );
 
   if (!res.ok) {
@@ -49,7 +49,7 @@ export default async function WallPage({
   }
 
   return (
-    <WallViewer
+    <WallPageClient
       wall={data.wall}
       notes={data.notes}
       templates={data.templates}

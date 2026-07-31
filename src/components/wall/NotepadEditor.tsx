@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/components/toast/ToastProvider';
 
@@ -8,7 +9,7 @@ interface NotepadEditorProps {
   imageUrl: string;
   themeName: string;
   onClose: () => void;
-  onSave: (dataUrl: string, authorName: string, width: number, height: number) => void;
+  onSave: (dataUrl: string, authorName: string, width: number, height: number) => Promise<void>;
   initialAuthorName?: string;
 }
 
@@ -28,12 +29,15 @@ interface OverlayItem {
   height: number;
   content: string;
   fontSize: number;
+  fontScale?: number;
   fontFamily: string;
   color: string;
   textAlign: 'left' | 'center' | 'right';
   bold: boolean;
   italic: boolean;
   strokes?: PenStroke[];
+  initialCanvasWidth?: number;
+  initialCanvasHeight?: number;
 }
 
 const TEXT_COLORS = ['#ffffff', '#f4eebf', '#ffd0db', '#e5e5e5', '#004686', '#a20000', '#582c05', '#000000'];
@@ -91,6 +95,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         height: 40,
         content: 'Type here...',
         fontSize: 16,
+        fontScale: 16 / 40,
         fontFamily: 'inherit',
         color: '#1e293b',
         textAlign: 'left',
@@ -126,6 +131,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
 
   const addPen = () => {
     const id = `pen-${Date.now()}`;
+    const initialWidth = 300;
+    const initialHeight = 200;
     setOverlays((prev) => [
       ...prev,
       {
@@ -133,8 +140,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         type: 'pen',
         x: 20,
         y: 20,
-        width: 300,
-        height: 200,
+        width: initialWidth,
+        height: initialHeight,
         content: '',
         fontSize: 0,
         fontFamily: 'inherit',
@@ -143,6 +150,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         bold: false,
         italic: false,
         strokes: [],
+        initialCanvasWidth: initialWidth,
+        initialCanvasHeight: initialHeight,
       },
     ]);
     setActiveOverlay(id);
@@ -153,11 +162,23 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
     if (!activeOverlay) return { x: 0, y: 0 };
     const canvas = drawingCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
+    
+    const overlay = overlaysRef.current.find((o) => o.id === activeOverlay);
+    if (!overlay) return { x: 0, y: 0 };
+    
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    
+    const bufferWidth = overlay.initialCanvasWidth || overlay.width;
+    const bufferHeight = overlay.initialCanvasHeight || overlay.height;
+    
+    const displayWidth = rect.width;
+    const displayHeight = rect.height;
+    
+    const scaleX = bufferWidth / displayWidth;
+    const scaleY = bufferHeight / displayHeight;
+    
     return {
       x: (clientX - rect.left) * scaleX,
       y: (clientY - rect.top) * scaleY,
@@ -298,7 +319,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         // ignore
       }
     }
-  }, []);
+  }, [imageUrl]);
 
   // Keep refs in sync so event listeners always have fresh data
   useEffect(() => {
@@ -428,7 +449,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         newW = Math.min(newW, bounds.width - newX);
         newH = Math.min(newH, bounds.height - newY);
 
-        updateOverlayRef.current(resizeRef.current.id!, { x: newX, y: newY, width: newW, height: newH });
+        updateOverlayRef.current(resizeRef.current.id!, { x: newX, y: newY, width: newW, height: newH, fontSize: overlay.type === 'text' ? Math.max(8, Math.round(newH * (overlay.fontScale || (overlay.fontSize / overlay.height)))) : overlay.fontSize });
       }
       // Drag
       else if (dragRef.current.id) {
@@ -471,8 +492,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
       }
 
       // Use a reasonable display size for the note on the wall
-      const displayW = 400;
-      const displayH = 400;
+      const displayW = 320;
+      const displayH = 320;
 
       // Get the actual displayed size of the preview image using getBoundingClientRect
       const previewImgEl = previewRef.current?.querySelector('img') as HTMLImageElement | null;
@@ -510,7 +531,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
 
         if (overlay.type === 'text') {
           const textEl = document.createElement('div');
-          textEl.style.fontSize = Math.round(overlay.fontSize * scaleX) + 'px';
+          textEl.style.fontSize = Math.round((overlay.fontScale ? overlay.height * overlay.fontScale : overlay.fontSize) * scaleX) + 'px';
           textEl.style.fontFamily = overlay.fontFamily;
           textEl.style.color = overlay.color;
           textEl.style.width = '100%';
@@ -568,20 +589,6 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         overlayContainer.appendChild(el);
       }
 
-      // Add author name at the bottom right of the notepad
-      if (authorName) {
-        const nameEl = document.createElement('div');
-        nameEl.style.position = 'absolute';
-        nameEl.style.bottom = Math.round(8 * scaleY) + 'px';
-        nameEl.style.right = Math.round(8 * scaleX) + 'px';
-        nameEl.style.textAlign = 'right';
-        nameEl.style.fontSize = Math.round(18 * scaleX) + 'px';
-        nameEl.style.color = '#5a6f8d';
-        nameEl.style.fontFamily = 'inherit';
-        nameEl.textContent = `— ${authorName}`;
-        overlayContainer.appendChild(nameEl);
-      }
-
       document.body.appendChild(overlayContainer);
 
       const imageOverlays = overlays.filter((o) => o.type === 'image' && o.content);
@@ -595,7 +602,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         }
         let failed = false;
         imagesToLoad.forEach((src) => {
-          const img = new Image();
+          const img = new window.Image(0, 0);
           img.onload = () => {
             imagesLoaded++;
             if (imagesLoaded === imagesToLoad.length && !failed) resolve();
@@ -619,23 +626,25 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
       });
 
       document.body.removeChild(overlayContainer);
-      onSave(canvas.toDataURL('image/webp', 0.9), authorName || 'Anonymous', displayW, displayH);
+      // Await the parent's upload — on success the parent either reloads the page or closes the editor,
+      // so we rarely reach the lines below. On failure the Promise rejects and the catch re-enables the button.
+      await onSave(canvas.toDataURL('image/webp', 0.9), authorName || 'Anonymous', displayW, displayH);
       try {
         localStorage.removeItem(`echoes_draft_${imageUrl}`);
       } catch {
         // ignore
       }
-    } catch {
+    } catch (err) {
       showToast('Failed to save note. Please try again.', 'error');
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const activeOverlayData = overlays.find((o) => o.id === activeOverlay);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative flex w-full max-w-4xl gap-6 rounded-2xl bg-white p-6 shadow-2xl mx-4">
+      <div className="relative flex max-h-[calc(100dvh-2rem)] flex-col md:max-h-none md:flex-row md:max-w-4xl gap-6 rounded-2xl bg-white p-4 md:p-6 shadow-2xl mx-4">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -647,26 +656,28 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         </button>
 
         {/* Editor controls */}
-        <div className="flex flex-col gap-4 w-56 shrink-0">
+        <div className="flex w-full flex-col gap-2 md:w-56 md:shrink-0 md:gap-4">
           <h3 className="text-sm font-semibold text-slate-700">{themeName}</h3>
-          <button
-            onClick={addText}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            + Add Text
-          </button>
-          <button
-            onClick={addImage}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            + Add Image
-          </button>
-          <button
-            onClick={addPen}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            + Pen
-          </button>
+          <div className="flex flex-row gap-2 md:flex-col">
+            <button
+              onClick={addText}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              + Add Text
+            </button>
+            <button
+              onClick={addImage}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              + Add Image
+            </button>
+            <button
+              onClick={addPen}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              + Pen
+            </button>
+          </div>
 
           {activeOverlayData && (
             <div className="mt-2 rounded-lg border border-slate-200 p-3 space-y-3">
@@ -690,6 +701,12 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       const sizeMap: Record<string, number> = {
                         inherit: 16,
                         "'Caveat Brush', cursive": 24,
+                        "'Patrick Hand', cursive": 20,
+                        "'Indie Flower', cursive": 20,
+                        "'Shadows Into Light', cursive": 22,
+                        "'Dancing Script', cursive": 22,
+                        "'Caladea', serif": 16,
+                        "'Courier New', monospace": 14,
                       };
                         updateOverlay(activeOverlay!, {
                           fontFamily: newFamily,
@@ -699,14 +716,42 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       className="w-full rounded border border-slate-300 p-2 text-sm focus:outline-none"
                     >
                       <option value="inherit">Default (Aa)</option>
-                      <option value="'Caveat Brush', cursive">Caveat Brush (Aa)</option>
+                      <option value="'Caveat Brush', cursive" style={{ fontFamily: "'Caveat Brush', cursive" }}>Caveat Brush (Aa)</option>
+                      <option value="'Patrick Hand', cursive" style={{ fontFamily: "'Patrick Hand', cursive" }}>Patrick Hand (Aa)</option>
+                      <option value="'Indie Flower', cursive" style={{ fontFamily: "'Indie Flower', cursive" }}>Indie Flower (Aa)</option>
+                      <option value="'Shadows Into Light', cursive" style={{ fontFamily: "'Shadows Into Light', cursive" }}>Shadows Into Light (Aa)</option>
+                      <option value="'Dancing Script', cursive" style={{ fontFamily: "'Dancing Script', cursive" }}>Dancing Script (Aa)</option>
+                      <option value="'Caladea', serif" style={{ fontFamily: "'Caladea', serif" }}>Caladea (Aa)</option>
+                      <option value="'Courier New', monospace" style={{ fontFamily: "'Courier New', monospace" }}>Courier New (Aa)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Font Size</label>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Font Size</span>
+                      <span
+                        className="text-xs font-medium tabular-nums"
+                        style={{
+                          color: '#775537',
+                          backgroundColor: '#f5f0e8',
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          minWidth: '42px',
+                          textAlign: 'center',
+                          fontFamily: "'Patrick Hand', cursive",
+                        }}
+                      >
+                        {activeOverlayData.fontSize}px
+                      </span>
+                    </div>
                     <select
                       value={activeOverlayData.fontSize}
-                      onChange={(e) => updateOverlay(activeOverlay!, { fontSize: Number(e.target.value) })}
+                      onChange={(e) => {
+                        const newSize = Number(e.target.value);
+                        updateOverlay(activeOverlay!, {
+                          fontSize: newSize,
+                          fontScale: newSize / activeOverlayData!.height,
+                        });
+                      }}
                       className="w-full rounded border border-slate-300 p-2 text-sm focus:outline-none"
                     >
                       {FONT_SIZES.map((s) => (
@@ -952,15 +997,23 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+              className="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isSaving ? 'Saving...' : 'Save to Wall'}
+              {isSaving ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Saving...
+                </>
+              ) : 'Save to Wall'}
             </button>
           </div>
         </div>
 
         {/* Preview area */}
-        <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-xl p-4 overflow-auto">
+        <div className="flex-1 overflow-auto">
           <div
             ref={previewRef}
             className="relative inline-block"
@@ -971,11 +1024,13 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
               }
             }}
           >
-            <img
+            <Image
               src={imageUrl}
               alt="Notepad"
               className="block max-h-[500px] max-w-full object-contain"
               draggable={false}
+              width={500}
+              height={500}
               style={{ pointerEvents: 'none' }}
             />
             {overlays.map((overlay) => (
@@ -1044,11 +1099,13 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                     }}
                   >
                     {overlay.content ? (
-                      <img
+                      <Image
                         src={overlay.content}
                         alt=""
                         className="w-full h-full object-contain rounded"
                         draggable={false}
+                        width={200}
+                        height={200}
                       />
                     ) : (
                       <span className="text-xs text-slate-400 text-center px-1">No image</span>
@@ -1059,8 +1116,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                   <canvas
                     ref={drawingCanvasRef}
                     className="absolute inset-0 w-full h-full"
-                    width={overlay.width}
-                    height={overlay.height}
+                    width={overlay.initialCanvasWidth || overlay.width}
+                    height={overlay.initialCanvasHeight || overlay.height}
                     style={{ cursor: isDrawing ? 'crosshair' : 'default', pointerEvents: 'auto' }}
                     onMouseDown={(e) => {
                       if (overlay.id === activeOverlay && isDrawing) {

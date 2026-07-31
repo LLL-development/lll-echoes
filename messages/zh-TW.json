@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "backToHome": "← 返回首頁",
+    "settings": "⚙ 設定",
+    "deleteWall": "刪除牆"
+  },
+  "hint": {
+    "rotateDevice": "橫向畫面體驗更佳"
+  },
+  "toolbar": {
+    "open": "開啟工具列",
+    "close": "關閉工具列"
+  },
+  "canvas": {
+    "empty": "還沒有任何筆記。",
+    "addFirst": "新增第一個筆記",
+    "subtitleDefault": "記錄你的想法",
+    "subtitleEditMode": "拖曳藍色控制桿來調整筆記大小",
+    "editModeHint": "拖曳筆記來重新排列"
+  },
+  "note": {
+    "authorDefault": "匿名",
+    "resize": "調整筆記大小",
+    "resizeDone": "完成調整",
+    "delete": "刪除筆記",
+    "confirmDelete": "確定要刪除此筆記嗎？",
+    "empty": "空筆記",
+    "tapToWrite": "點擊即可書寫..."
+  },
+  "share": {
+    "button": "分享",
+    "playgroundButton": "建立你自己的牆"
+  },
+  "playground": {
+    "cta": "建立我的牆"
+  },
+  "title": {
+    "edit": "編輯標題"
+  },
+  "confirm": {
+    "deleteWall": "確定要刪除此牆嗎？此操作無法復原。"
+  },
+  "toast": {
+    "wallDeleted": "牆已刪除",
+    "deleteWallFailed": "刪除牆失敗",
+    "playgroundRefreshing": "正在準備 playground 工作階段，請再試一次。",
+    "noDeleteAccess": "無法刪除，請重新整理頁面後再試。",
+    "noEditAccess": "無編輯權限，僅可瀏覽。",
+    "seededNotesInfo": "這些是供你體驗的範例筆記，重新整理頁面後會消失。你也可以新增自己的筆記。",
+    "deleteNoteFailed": "刪除筆記失敗",
+    "saveChangesFailed": "儲存變更失敗"
+  }
+}

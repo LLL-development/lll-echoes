@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Caveat+Brush&family=Patrick+Hand&family=Indie+Flower&family=Shadows+Into+Light&family=Dancing+Script&family=Caladea&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Caveat+Brush&family=Patrick+Hand&display=swap');
 
 :root {
   --wall-bg: #f8fafc;
