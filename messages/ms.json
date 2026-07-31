@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "backToHome": "← Kembali ke home",
+    "settings": "⚙ Tetapan",
+    "deleteWall": "Padam dinding"
+  },
+  "hint": {
+    "rotateDevice": "Pusingkan untuk pengalaman terbaik"
+  },
+  "toolbar": {
+    "open": "Buka toolbar",
+    "close": "Tutup toolbar"
+  },
+  "canvas": {
+    "empty": "Belum ada nota di dinding ini.",
+    "addFirst": "Tambah nota pertama",
+    "subtitleDefault": "Ruang untuk pemikiran anda",
+    "subtitleEditMode": "Seret pemegang biru untuk mengubah saiz nota",
+    "editModeHint": "Seret nota untuk menyusunnya"
+  },
+  "note": {
+    "authorDefault": "Tanpa nama",
+    "resize": "Ubah saiz nota",
+    "resizeDone": "Selesai ubah saiz",
+    "delete": "Padam nota",
+    "confirmDelete": "Padam nota ini?",
+    "empty": "Nota kosong",
+    "tapToWrite": "Ketik untuk menulis..."
+  },
+  "share": {
+    "button": "Kongsi",
+    "playgroundButton": "Buat dinding anda sendiri"
+  },
+  "playground": {
+    "cta": "Buat Dinding Saya"
+  },
+  "title": {
+    "edit": "Sunting tajuk"
+  },
+  "confirm": {
+    "deleteWall": "Pasti mahu memadam dinding ini? Tindakan ini tidak boleh diundur."
+  },
+  "toast": {
+    "wallDeleted": "Dinding dipadam",
+    "deleteWallFailed": "Gagal memadam dinding",
+    "playgroundRefreshing": "Menyediakan sesi playground anda. Sila cuba lagi.",
+    "noDeleteAccess": "Tidak dapat memadam. Sila muat semula halaman dan cuba lagi.",
+    "noEditAccess": "Tiada akses suntingan. Anda hanya boleh melihat dinding ini.",
+    "seededNotesInfo": "Nota ini ada di sini untuk anda mencuba. Ia akan direset apabila anda muat semula halaman. Jangan teragak-agak menambah nota anda sendiri juga!",
+    "deleteNoteFailed": "Gagal memadam nota",
+    "saveChangesFailed": "Gagal menyimpan perubahan"
+  }
+}

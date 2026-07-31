@@ -9,6 +9,8 @@ import SharePanel from './SharePanel';
 import NotepadEditor from './NotepadEditor';
 import PlaygroundInfoCard from './PlaygroundInfoCard';
 import { useToast } from '@/components/toast/ToastProvider';
+import NextImage from 'next/image';
+import LocaleSwitcher from '@/components/common/LocaleSwitcher';
 
 interface WallViewerProps {
   wall: {
@@ -28,6 +30,20 @@ interface WallViewerProps {
   onNotepadClick?: (imageUrl: string, themeName: string) => void;
   onNoteDelete?: (noteId: string) => void;
   onNoteSaved?: () => void;
+}
+
+function TimestampDisplay({ date }: { date: string | null | undefined }) {
+  if (!date) return null;
+  const ts = new Date(date);
+  const diff = Date.now() - ts.getTime();
+  const mins = Math.floor(diff / 60000);
+  let label = 'just now';
+  if (mins >= 1 && mins < 60) label = `${mins}m ago`;
+  else if (mins >= 60 && mins < 1440) label = `${Math.floor(mins / 60)}h ago`;
+  else if (mins >= 1440 && mins < 10080) label = `${Math.floor(mins / 1440)}d ago`;
+  else if (mins >= 10080 && mins < 20160) label = '1w ago';
+  else if (mins >= 20160) label = `${Math.floor(mins / 10080)}w ago`;
+  return <div className="mt-0.5 text-[10px] text-slate-400">{label}</div>;
 }
 
 const RESIZE_HANDLES = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
@@ -90,6 +106,27 @@ export default function WallViewer({
   const { showToast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasShownSeededNoteHintRef = useRef(false);
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsPortrait(mobile && window.innerHeight > window.innerWidth);
+    };
+    checkMobile();
+    const onResize = () => checkMobile();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
 
   // Read ?contribute=1 from URL on mount
   useEffect(() => {
@@ -192,7 +229,8 @@ export default function WallViewer({
   const handlePointerDown = useCallback((noteId: string, e: React.PointerEvent) => {
     if (editMode) return;
     if (!canvasRef.current) return;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture?.(e.pointerId);
 
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
@@ -278,13 +316,22 @@ export default function WallViewer({
   }, [draggingId, editMode, resizingId, resizeData, dragOffset, rotatingId, rotateStartAngle, rotateStartRotation, notePositions, notes]);
 
   const persistNoteChanges = useCallback(async () => {
-    if (isPlayground) return;
-
-    const changes: Array<{ id: string; x: number; y: number; width: number; height: number; rotation: number }> = [];
-
+    const changes = [];
     for (const noteId of Object.keys(notePositions)) {
       const note = notes.find((n) => n.id === noteId);
       if (!note) continue;
+
+      if (isPlayground && !note.author_session_id) {
+        if (!hasShownSeededNoteHintRef.current) {
+          hasShownSeededNoteHintRef.current = true;
+          showToast(
+            "These notes are here for you to try things out! They'll reset when you refresh the page. Feel free to add your own notes, too!",
+            'info'
+          );
+        }
+        continue;
+      }
+
       const pos = notePositions[noteId];
       const rotation = noteRotations[noteId] || 0;
       const origX = note.x;
@@ -293,13 +340,19 @@ export default function WallViewer({
       const origH = note.height;
       const origRotation = note.rotation || 0;
 
-      if (pos.x !== origX || pos.y !== origY || pos.width !== origW || pos.height !== origH || rotation !== origRotation) {
+      if (
+        pos.x !== origX ||
+        pos.y !== origY ||
+        pos.width !== origW ||
+        pos.height !== origH ||
+        rotation !== origRotation
+      ) {
         changes.push({
           id: noteId,
           x: Math.round(pos.x),
           y: Math.round(pos.y),
-          width: Math.round(pos.width || origW),
-          height: Math.round(pos.height || origH),
+          width: Math.round(pos.width ?? origW),
+          height: Math.round(pos.height ?? origH),
           rotation: Math.round(rotation),
         });
       }
@@ -307,17 +360,22 @@ export default function WallViewer({
 
     if (changes.length === 0) return;
 
-    try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (isPlayground) {
+      if (!playgroundSessionId) return;
+      headers['X-Playground-Session-Id'] = playgroundSessionId;
+    } else {
       const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
       if (!token) return;
-      await Promise.all(
+      headers['X-Edit-Token'] = token;
+    }
+
+    try {
+      const results = await Promise.all(
         changes.map((change) =>
           fetch(`/api/walls/${wall.slug}/notes/${change.id}`, {
             method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Edit-Token': token,
-            },
+            headers,
             body: JSON.stringify({
               x: change.x,
               y: change.y,
@@ -328,12 +386,24 @@ export default function WallViewer({
           })
         )
       );
-    } catch {
-      // Failed to persist — that's ok in edit mode
-    }
-  }, [isPlayground, notePositions, noteRotations, notes, wall.slug]);
 
-  const handlePointerUp = useCallback(() => {
+      for (const res of results) {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          showToast(data.error || 'Failed to save changes', 'error');
+          break;
+        }
+      }
+    } catch {
+      showToast('Failed to save changes', 'error');
+    }
+  }, [isPlayground, notePositions, noteRotations, notes, wall.slug, playgroundSessionId, showToast]);
+
+  const handlePointerUp = useCallback((e?: React.PointerEvent | React.MouseEvent) => {
+    if (draggingId) {
+      const noteEl = canvasRef.current?.querySelector(`[data-note-id="${draggingId}"]`) as HTMLElement;
+      noteEl?.releasePointerCapture?.(e?.pointerId);
+    }
     if (draggingId || resizingId || rotatingId) {
       persistNoteChanges();
     }
@@ -347,6 +417,7 @@ export default function WallViewer({
       e.stopPropagation();
       return;
     }
+    e.stopPropagation();
     handlePointerDown(noteId, e);
   }, [editMode, handlePointerDown]);
 
@@ -420,21 +491,43 @@ export default function WallViewer({
   }, [isEditingTitle, wallTitle, wall.theme, wall.slug, isPlayground]);
 
   const handleDeleteNote = useCallback(async (noteId: string) => {
-    if (isPlayground) return;
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
-      if (!token) return;
-      await fetch(`/api/walls/${wall.slug}/notes/${noteId}`, {
+      let headers = {};
+      if (isPlayground) {
+        if (!playgroundSessionId) {
+          showToast('Cannot delete — please refresh and try again.', 'error');
+          return;
+        }
+        headers['X-Playground-Session-Id'] = playgroundSessionId;
+      } else {
+        const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
+        if (!token) {
+          showToast('No edit access. You can only view this wall.', 'error');
+          return;
+        }
+        headers['X-Edit-Token'] = token;
+      }
+
+      const response = await fetch(`/api/walls/${wall.slug}/notes/${noteId}`, {
         method: 'DELETE',
-        headers: {
-          'X-Edit-Token': token,
-        },
+        headers,
       });
-      onNoteDelete?.(noteId);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        showToast(data.error || 'Failed to delete note', 'error');
+        return;
+      }
+
+      if (onNoteDelete) {
+        onNoteDelete(noteId);
+      } else {
+        window.location.reload();
+      }
     } catch {
-      // Failed to delete
+      showToast('Failed to delete note', 'error');
     }
-  }, [isPlayground, wall.slug, onNoteDelete]);
+  }, [isPlayground, wall.slug, onNoteDelete, playgroundSessionId, showToast]);
 
   const handleOpenEditor = useCallback((imageUrl: string, themeName: string) => {
     setEditorImage(imageUrl);
@@ -530,33 +623,68 @@ export default function WallViewer({
     ? (bgColorOverride || wall.embed_bg_color || '#ffffff')
     : (wall.embed_bg_color || '#fffef9');
 
-  // Compute canvas height so notes aren't clipped and the wall doesn't overflow the screen unnecessarily
-  const canvasMinHeight = Math.max(
-    400,
-    ...notes.map((note) => {
-      const pos = notePositions[note.id];
-      const h = pos?.height ?? note.height ?? 150;
-      return (pos?.y ?? note.y) + h + 60; // padding
-    })
-  );
-
   return (
-    <div className="relative min-h-screen">
+    <>
+      {/* Rotation notification - top level for proper fixed positioning */}
+      {isPortrait === true && (
+        <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
+          <div 
+            className="pointer-events-auto animate-bounce"
+            style={{
+              backgroundColor: 'rgba(30, 30, 30, 0.95)',
+              color: '#fff',
+              padding: '1rem 2rem',
+              borderRadius: '2rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+            }}
+          >
+            <span style={{ fontSize: '1.5rem' }}>📱</span>
+            <span>Rotate your device</span>
+          </div>
+        </div>
+      )}
+      <div className="relative min-h-screen">
       {/* Background */}
       <div className="fixed inset-0" style={{ backgroundColor: '#fffef9' }} />
-      {isPlayground && <PlaygroundInfoCard />}
+      
+      {isPlayground && (
+        <>
+          <NextImage
+            src="/logo.webp"
+            alt="Logo"
+            className="absolute z-20"
+            width={100}
+            height={100}
+            style={{
+              top: '24px',
+              left: '24px',
+              width: '100px',
+              height: 'auto'
+            }}
+          />
+          <div className="absolute z-20" style={{ top: '24px', right: '24px' }}>
+            <LocaleSwitcher />
+          </div>
+          <PlaygroundInfoCard />
+        </>
+      )}
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-4">
-          <Link href="/" className="text-sm font-medium hover:opacity-70" style={{ color: '#775537' }}>
-            ← Back to home
-          </Link>
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
           {!isPlayground && (
-            <div className="flex items-center gap-4">
-              <Link href="/create" className="text-sm font-medium hover:opacity-70" style={{ color: '#775537' }}>
-                + Create Wall
-              </Link>
+            <Link href="/" className="text-sm font-medium hover:opacity-70" style={{ color: '#775537' }}>
+              ← Back to home
+            </Link>
+          )}
+          {!isPlayground && (
+            <div className="flex items-center gap-2 md:gap-4">
+              <LocaleSwitcher />
               {hasEditToken && (
                 <Link
                   href={`/w/${wall.slug}/settings`}
@@ -599,7 +727,7 @@ export default function WallViewer({
           )}
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 pt-16 pb-8">
+        <div className="flex-1 flex flex-col items-center justify-start px-4 pt-16 pb-8 overflow-x-hidden">
           <div className="mb-8 text-center">
             {isEditingTitle ? (
               <div className="flex items-center gap-2">
@@ -641,95 +769,80 @@ export default function WallViewer({
             )}
           </div>
 
-          <div className="relative w-full max-w-7xl">
-            {/* Top right controls */}
+          <div className="relative w-full max-w-7xl overflow-x-auto">
+            {/* Top right controls - desktop only */}
             {(isPlayground || notes.length > 0) && (
-              <div className="absolute right-0 z-30 flex flex-col gap-2" style={{ transform: 'translateX(calc(100% + 12px))', top: 0 }}>
-                {notes.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setEditMode(!editMode);
-                      setSelectedNoteId(null);
-                    }}
-                    className="rounded-lg p-2 text-white"
-                    style={{
-                      backgroundColor: editMode ? '#4b5563' : '#775537',
-                      boxShadow: '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
-                    }}
-                    title={editMode ? 'Done Resizing' : 'Resize Notes'}
-                  >
-                    {editMode ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    )}
-                  </button>
-                )}
-                <button
-                  disabled={isPlayground}
-                  onClick={() => {
-                    if (!isPlayground) setSharePanelOpen(true);
-                  }}
-                  className="rounded-lg p-2 text-white"
-                  style={{
-                    backgroundColor: '#775537',
-                    boxShadow: isPlayground
-                      ? '0 3px 0 #5a3f2a'
-                      : '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
-                    opacity: isPlayground ? 0.45 : 1,
-                    cursor: isPlayground ? 'not-allowed' : 'pointer',
-                  }}
-                  title={isPlayground ? 'Create your own wall to share' : 'Share'}
+              <>
+                {/* Desktop: right side positioning */}
+                <div
+                  className="hidden md:flex fixed z-30 flex-col gap-2"
+                  style={{ left: 'calc(50% + 656px)', top: '9rem' }}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                </button>
-                {isPlayground && (
-                  <Link
-                    href="/create"
+                  {notes.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setEditMode(!editMode);
+                        setSelectedNoteId(null);
+                      }}
+                      className="rounded-lg p-2 text-white"
+                      style={{
+                        backgroundColor: editMode ? '#4b5563' : '#775537',
+                        boxShadow: '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
+                      }}
+                      title={editMode ? 'Done Resizing' : 'Resize Notes'}
+                    >
+                      {editMode ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    disabled={isPlayground}
+                    onClick={() => {
+                      if (!isPlayground) setSharePanelOpen(true);
+                    }}
                     className="rounded-lg p-2 text-white"
                     style={{
                       backgroundColor: '#775537',
-                      boxShadow: '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
-                      textDecoration: 'none',
+                      boxShadow: isPlayground
+                        ? '0 3px 0 #5a3f2a'
+                        : '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
+                      opacity: isPlayground ? 0.45 : 1,
+                      cursor: isPlayground ? 'not-allowed' : 'pointer',
                     }}
-                    title="Create My Wall"
+                    title={isPlayground ? 'Create your own wall to share' : 'Share'}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                  </Link>
-                )}
-              </div>
+                  </button>
+                </div>
+              </>
             )}
 
             <div
               ref={canvasRef}
-              className="relative flex-1 w-full rounded-2xl backdrop-blur-sm"
+              className="relative flex-1 w-full rounded-2xl backdrop-blur-sm touch-none select-none"
               style={{
                 backgroundColor: effectiveBgColor,
                 backgroundImage: 'radial-gradient(circle, rgba(139, 106, 74, 0.15) 1px, transparent 1px)',
                 backgroundSize: '20px 20px',
                 border: '1px solid rgba(119,85,55,0.15)',
                 boxShadow: '0 0 0 1px rgba(119,85,55,0.08), 0 8px 32px rgba(119,85,55,0.12)',
-                minHeight: `${canvasMinHeight}px`,
+                height: isMobile ? 'calc(100vh - 200px)' : 'min(600px, calc(100dvh - 12rem))',
+                minWidth: isMobile ? '800px' : undefined,
+                overflow: isMobile ? 'auto' : 'hidden',
               }}
               onClick={handleCanvasClick}
-              onMouseMove={handlePointerMove}
-              onMouseUp={handlePointerUp}
-              onMouseLeave={handlePointerUp}
-              onTouchMove={(e) => {
-                if (e.touches.length === 1) {
-                  const touch = e.touches[0];
-                  handlePointerMove({ clientX: touch.clientX, clientY: touch.clientY } as React.MouseEvent);
-                }
-              }}
-              onTouchEnd={handlePointerUp}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
             >
               {notes.length === 0 ? (
                 <div className="flex absolute inset-0 items-center justify-center">
@@ -780,6 +893,7 @@ export default function WallViewer({
                   return (
                     <div
                       key={note.id}
+                      data-note-id={note.id}
                       className={`absolute ${
                         editMode ? 'cursor-move' : 'cursor-grab active:cursor-grabbing'
                       }`}
@@ -803,17 +917,27 @@ export default function WallViewer({
                           e.stopPropagation();
                           return;
                         }
-                        handleNotePointerDown(note.id, e as unknown as React.PointerEvent);
+                        e.stopPropagation();
+                        handleNotePointerDown(note.id, e);
                       }}
                     >
                       <div className={`h-full w-full ${editMode && selectedNoteId === note.id ? 'ring-2 ring-blue-500 rounded-lg' : ''}`}>
                         {note.image_url ? (
-                          <img
-                            src={note.image_url}
-                            alt="Note"
-                            className="h-full w-full pointer-events-none"
-                            draggable={false}
-                          />
+                          <>
+                            <img
+                              src={note.image_url}
+                              alt="Note"
+                              className="absolute inset-0 h-full w-full pointer-events-none"
+                              draggable={false}
+                            />
+                            {note.content && (
+                              <div className="relative flex h-full flex-col items-center justify-center p-4">
+                                <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words text-center">
+                                  {note.content}
+                                </p>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className="flex h-full items-center justify-center p-4">
                             {isPlayground ? (
@@ -829,11 +953,12 @@ export default function WallViewer({
                         )}
                       </div>
                       {/* Rotate handle (edit mode only) */}
-                      {editMode && (
+                      {editMode && (!isPlayground || note.author_session_id === playgroundSessionId) && (
                         <div
-                          className="absolute z-20 flex items-center justify-center cursor-grab"
+                          className={`absolute z-20 flex items-center justify-center cursor-grab ${
+                            isMobile ? 'top-[-36px]' : 'top-[-28px]'
+                          }`}
                           style={{
-                            top: -28,
                             left: '50%',
                             transform: 'translateX(-50%)',
                           }}
@@ -846,7 +971,7 @@ export default function WallViewer({
                         </div>
                       )}
                       {/* Delete button (edit mode only, not in playground) */}
-                      {editMode && !isPlayground && (
+                      {editMode && (!isPlayground || note.author_session_id === playgroundSessionId) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -854,10 +979,12 @@ export default function WallViewer({
                               handleDeleteNote(note.id);
                             }
                           }}
-                          className="absolute z-20 p-1 rounded-full transition-colors hover:bg-red-100"
+                          className={`absolute z-20 rounded-full transition-colors hover:bg-red-100 ${
+                            isMobile ? 'p-2' : 'p-1'
+                          }`}
                           style={{
-                            top: -12,
-                            right: -12,
+                            top: isMobile ? -16 : -12,
+                            right: isMobile ? -16 : -12,
                           }}
                           title="Delete note"
                         >
@@ -867,7 +994,7 @@ export default function WallViewer({
                         </button>
                       )}
                       {/* Resize handles (edit mode only, selected note only) */}
-                      {editMode && selectedNoteId === note.id && RESIZE_HANDLES.map((handle) => {
+                      {editMode && (!isPlayground || note.author_session_id === playgroundSessionId) && selectedNoteId === note.id && RESIZE_HANDLES.map((handle) => {
                         const handleStyles: Record<string, string> = {
                           nw: 'top-0 left-0 cursor-nw-resize',
                           n: 'top-0 left-1/2 -translate-x-1/2 cursor-n-resize',
@@ -881,7 +1008,9 @@ export default function WallViewer({
                         return (
                           <div
                             key={handle}
-                            className={`absolute w-4 h-4 bg-white border-2 border-blue-500 rounded-full ${handleStyles[handle]}`}
+                            className={`absolute bg-white border-2 border-blue-500 rounded-full ${
+                              isMobile ? 'w-5 h-5' : 'w-4 h-4'
+                            } ${handleStyles[handle]}`}
                             style={{
                               transform: handle.includes('n') && handle.includes('w') ? 'translate(-50%, -50%)' :
                                         handle.includes('n') && handle.includes('e') ? 'translate(50%, -50%)' :
@@ -894,11 +1023,107 @@ export default function WallViewer({
                           />
                         );
                       })}
+                      {/* Author + timestamp overlay at bottom-right of the note */}
+                      {(note.author_name || note.created_at) && (
+                        <div className="absolute bottom-0.4 right-2 text-right z-10 pointer-events-none">
+                          {note.author_name && (
+                            <p className="text-xs italic leading-tight" style={{ color: '#5a6f8d' }}>
+                              — {note.author_name}
+                            </p>
+                          )}
+                          {note.created_at && <TimestampDisplay date={note.created_at} />}
+                        </div>
+                      )}
                     </div>
                   );
                 })
               )}
             </div>
+
+            {/* Mobile: Share & Resize buttons below canvas */}
+            {(isPlayground || notes.length > 0) && (
+              <div className="flex md:hidden justify-center gap-3 mt-4">
+                {notes.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setEditMode(!editMode);
+                      setSelectedNoteId(null);
+                    }}
+                    className="rounded-lg px-4 py-2.5 text-white flex items-center gap-2"
+                    style={{
+                      backgroundColor: editMode ? '#4b5563' : '#775537',
+                      boxShadow: '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
+                    }}
+                  >
+                    {editMode ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">
+                      {editMode ? 'Done' : 'Resize'}
+                    </span>
+                  </button>
+                )}
+                <button
+                  disabled={isPlayground}
+                  onClick={() => {
+                    if (!isPlayground) setSharePanelOpen(true);
+                  }}
+                  className="rounded-lg px-4 py-2.5 text-white flex items-center gap-2"
+                  style={{
+                    backgroundColor: '#775537',
+                    opacity: isPlayground ? 0.45 : 1,
+                    cursor: isPlayground ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <span className="text-sm font-medium">Share</span>
+                </button>
+              </div>
+            )}
+
+            {/* Create My Board button */}
+            {isPlayground && (
+              <div className="flex justify-center mt-6">
+                <Link
+                  href="/create"
+                  className="rounded-xl px-12 py-3.5 font-bold text-lg rounded-lg border-2 inline-block"
+                  style={{
+                    backgroundColor: '#FBE29D',
+                    color: '#775537',
+                    border: '2px solid #775537',
+                    boxShadow: '0 5px 0 #775537, 0 6px 12px rgba(119,85,55,0.2)',
+                    textDecoration: 'none',
+                    transition: 'transform 0.1s ease, boxShadow 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 0 #775537';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 5px 0 #775537';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(2px)';
+                    e.currentTarget.style.boxShadow = '0 3px 0 #775537';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 5px 0 #775537';
+                  }}
+                >
+                  Create My Board
+                </Link>
+              </div>
+            )}
 
             {/* Playground hint text */}
             {isPlayground && notes.length > 0 && !editMode && (
@@ -913,7 +1138,9 @@ export default function WallViewer({
         {allowContributions && (
           <button
             onClick={() => setSidePanelOpen(!sidePanelOpen)}
-            className="fixed right-0 top-1/2 -translate-y-1/2 z-40 rounded-l-lg p-3 text-white shadow-lg"
+            className={`fixed right-0 top-1/2 -translate-y-1/2 z-40 rounded-l-lg text-white shadow-lg ${
+              isMobile ? 'p-4' : 'p-3'
+            }`}
             style={{
               backgroundColor: '#775537',
               boxShadow: '-3px 0 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
@@ -935,7 +1162,7 @@ export default function WallViewer({
           className="fixed right-0 top-0 h-full z-30 transition-transform duration-300 ease-in-out shadow-2xl"
           style={{
             transform: sidePanelOpen ? 'translateX(0)' : 'translateX(100%)',
-            width: '280px',
+            width: isMobile ? '100%' : '280px',
             backgroundColor: '#8b6a4a',
             borderLeft: '1px solid rgba(119,85,55,0.3)',
           }}
@@ -1129,5 +1356,6 @@ export default function WallViewer({
         </div>
       )}
     </div>
+    </>
   );
 }

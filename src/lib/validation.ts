@@ -4,8 +4,16 @@ import type { NextRequest } from 'next/server';
 // ── Value validators ────────────────────────────────────────────────
 
 export function isValidUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return false;
-  return value.startsWith('http://') || value.startsWith('https://');
+  if (typeof value !== 'string' || value.length === 0) return false;
+  // Accept standard HTTP(S) URLs (max 2048 chars)
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return value.length <= 2048;
+  }
+  // Accept data image URLs (base64-encoded images from canvas, max ~2MB)
+  if (value.startsWith('data:image/')) {
+    return value.length <= 2 * 1024 * 1024;
+  }
+  return false;
 }
 
 export function isValidAuthorName(value: unknown): value is string | null {

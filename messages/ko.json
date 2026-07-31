@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "backToHome": "← 홈으로 돌아가기",
+    "settings": "⚙ 설정",
+    "deleteWall": "벽 삭제"
+  },
+  "hint": {
+    "rotateDevice": "가로 모드가 더 좋아요"
+  },
+  "toolbar": {
+    "open": "툴바 열기",
+    "close": "툴바 닫기"
+  },
+  "canvas": {
+    "empty": "아직 노트가 없어요.",
+    "addFirst": "첫 번째 노트 추가",
+    "subtitleDefault": "당신의 생각을 담는 공간",
+    "subtitleEditMode": "파란 핸들을 드래그해 노트 크기를 조절하세요",
+    "editModeHint": "노트를 드래그해 정렬해보세요"
+  },
+  "note": {
+    "authorDefault": "익명",
+    "resize": "노트 크기 조절",
+    "resizeDone": "크기 조절 완료",
+    "delete": "노트 삭제",
+    "confirmDelete": "이 노트를 삭제하시겠어요?",
+    "empty": "빈 노트",
+    "tapToWrite": "탭해서 작성..."
+  },
+  "share": {
+    "button": "공유",
+    "playgroundButton": "내 벽 만들기"
+  },
+  "playground": {
+    "cta": "내 벽 만들기"
+  },
+  "title": {
+    "edit": "제목 수정"
+  },
+  "confirm": {
+    "deleteWall": "정말 이 벽을 삭제하시겠어요? 되돌릴 수 없습니다."
+  },
+  "toast": {
+    "wallDeleted": "벽이 삭제되었습니다",
+    "deleteWallFailed": "벽 삭제에 실패했습니다",
+    "playgroundRefreshing": "플레이그라운드 세션을 준비 중입니다. 다시 시도해 주세요.",
+    "noDeleteAccess": "삭제할 수 없습니다. 페이지를 새로고침 후 다시 시도해 주세요.",
+    "noEditAccess": "편집 권한이 없습니다. 보기만 가능합니다.",
+    "seededNotesInfo": "이 노트는 체험용 예시입니다. 페이지를 새로고침하면 사라집니다. 자신의 노트를 추가할 수도 있습니다.",
+    "deleteNoteFailed": "노트 삭제에 실패했습니다",
+    "saveChangesFailed": "변경사항 저장에 실패했습니다"
+  }
+}

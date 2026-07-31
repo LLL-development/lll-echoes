@@ -12,12 +12,25 @@ export async function POST(
   const { slug } = await params;
   const editToken = request.headers.get('X-Edit-Token') || '';
 
-  // 1. Authenticate
-  const authResult = await verifyEditToken(supabase, slug, editToken);
-  if (authResult.error) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.error === 'Wall not found' ? 404 : 401 });
+  // 1. Authenticate: allow if edit token valid OR wall allows contributions
+  const wallQuery = await supabase
+    .from('walls')
+    .select('id, edit_token, allow_contributions')
+    .eq('slug', slug)
+    .single();
+
+  if (wallQuery.error || !wallQuery.data) {
+    return NextResponse.json({ error: 'Wall not found' }, { status: 404 });
   }
-  const wall = authResult.wall!;
+
+  const wall = wallQuery.data;
+  const tokenHash = editToken ? await crypto.subtle.digest('SHA-256', new TextEncoder().encode(editToken)).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')) : '';
+  const isOwner = tokenHash === wall.edit_token;
+  const isContributor = wall.allow_contributions === true;
+
+  if (!isOwner && !isContributor) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   // 2. Note count limit
   const { count: noteCount } = await supabase
@@ -48,7 +61,7 @@ export async function POST(
 
   // 4. Validate body
   const body = await request.json();
-  const { image_url, author_name, x, y, width, height, rotation, template_id, author_session_id } = body;
+  const { image_url, author_name, x, y, width, height, rotation, template_id, author_session_id, content } = body;
 
   if (image_url !== undefined && !isValidUrl(image_url)) {
     return NextResponse.json(
@@ -93,6 +106,7 @@ export async function POST(
       author_session_id: typeof author_session_id === 'string' && author_session_id.length <= 64
         ? author_session_id
         : null,
+      content: typeof content === 'string' && content.length > 0 ? content : null,
     })
     .select()
     .single();

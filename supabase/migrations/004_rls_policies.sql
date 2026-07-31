@@ -24,6 +24,11 @@ create policy "Anyone can insert notes"
   on notes for insert
   with check (true);
 
+-- Notes: anyone can update
+create policy "Anyone can update notes"
+  on notes for update
+  using (true);
+
 -- Note templates: anyone can read
 create policy "Anyone can read note_templates"
   on note_templates for select

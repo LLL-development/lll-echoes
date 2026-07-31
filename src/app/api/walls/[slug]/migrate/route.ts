@@ -26,30 +26,8 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid session_id' }, { status: 400 });
   }
 
-  // Fetch the playground wall (defensive)
-  const { data: playgroundWall } = await supabase
-    .from('walls')
-    .select('id')
-    .eq('slug', 'playground')
-    .single();
-
-  if (!playgroundWall) {
-    return NextResponse.json({ error: 'Playground wall not found' }, { status: 404 });
-  }
-
-  // Fetch all of this user's notes from the playground
-  const { data: sourceNotes, error: notesError } = await supabase
-    .from('notes')
-    .select('*')
-    .eq('wall_id', playgroundWall.id)
-    .eq('author_session_id', session_id);
-
-  if (notesError) {
-    console.error('[POST /api/walls/playground/migrate] Fetch notes error:', notesError);
-    return NextResponse.json({ error: 'Failed to read playground notes' }, { status: 500 });
-  }
-
-  // Create a new permanent wall
+  // Create a new permanent wall (empty — playground notes are cleaned up
+  // via a separate beacon when the client navigates away).
   const newSlug = randomUUID().substring(0, 8);
   const newEditToken = randomUUID();
   const newEditTokenHash = createHash('sha256').update(newEditToken).digest('hex');
@@ -64,7 +42,6 @@ export async function POST(
       allow_contributions: true,
       title: title.trim(),
       description: null,
-      embed_bg_color: '#ffffff',
     })
     .select()
     .single();
@@ -74,37 +51,10 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to create new wall' }, { status: 500 });
   }
 
-  // Copy notes to the new wall (new IDs, same positions/content)
-  if (sourceNotes && sourceNotes.length > 0) {
-    const newNotes = sourceNotes.map((note) => ({
-      wall_id: newWall.id,
-      image_url: note.image_url,
-      x: note.x,
-      y: note.y,
-      width: note.width,
-      height: note.height,
-      rotation: note.rotation,
-      template_id: note.template_id,
-      author_name: note.author_name,
-      author_session_id: null, // clear session on migrated notes
-    }));
-
-    const { error: copyError } = await supabase.from('notes').insert(newNotes);
-    if (copyError) {
-      console.error('[POST /api/walls/playground/migrate] Note copy error:', copyError);
-      // Don't roll back the wall — it's created, just let user know it went partial
-      return NextResponse.json({
-        error: 'Wall created but failed to copy notes',
-        slug: newSlug,
-        editToken: newEditToken,
-      }, { status: 500 });
-    }
-  }
-
   return NextResponse.json({
     slug: newSlug,
     editToken: newEditToken,
     editLink: `/w/${newSlug}/edit`,
-    notesCount: sourceNotes?.length ?? 0,
+    notesCount: 0,
   });
 }

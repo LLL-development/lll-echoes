@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useToast } from '@/components/toast/ToastProvider';
 
 type CreatedWall = { slug: string; editToken: string; editLink: string };
@@ -60,7 +61,7 @@ export default function CreateWallPage() {
       showToast('Network error. Please try again.', 'error');
       setIsCreating(false);
     }
-  }, [selectedTheme, title, description, router]);
+  }, [selectedTheme, title, description, showToast]);
 
   useEffect(() => {
     setCopied(false);
@@ -79,7 +80,7 @@ export default function CreateWallPage() {
               Your wall is ready!
             </h1>
             <p className="text-sm mb-6" style={{ color: '#775537', opacity: 0.7 }}>
-              Save the link below. You'll need it to manage your wall.
+              Save the link below. You&rsquo;ll need it to manage your wall.
             </p>
 
             {/* Edit Link */}
@@ -125,7 +126,7 @@ export default function CreateWallPage() {
             {/* Warning */}
             <div className="mb-6 px-4 py-3 rounded-lg" style={{ backgroundColor: '#FFF5F5', border: '1px solid #FCA5A5' }}>
               <p className="text-xs font-medium" style={{ color: '#991B1B' }}>
-                ⚠️ This link is your only way to manage the wall. If you switch browsers or clear your data, you'll lose edit access.
+                ⚠️ This link is your only way to manage the wall. If you switch browsers or clear your data, you&rsquo;ll lose edit access.
               </p>
             </div>
 
@@ -195,11 +196,12 @@ export default function CreateWallPage() {
       ) : (
         <>
           {/* Logo */}
-          <img
+          <Image
             src="/logo.webp"
             alt="Logo"
             className="absolute top-6 left-6 z-20"
-            style={{ width: '100px', height: 'auto' }}
+            width={100}
+            height={100}
           />
 
           {/* Title & Subtitle */}
@@ -220,42 +222,31 @@ export default function CreateWallPage() {
 
           {/* Board background container */}
           <div
-            className="absolute z-10"
+            className="absolute top-12 right-12 bottom-12 left-4 z-10"
             style={{
               backgroundImage: "url('/createbg.webp')",
               backgroundSize: 'contain',
-              backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
-              top: '80px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '2000px',
-              height: '800px',
+              backgroundPosition: 'center',
             }}
           >
             {/* Inner padding to place content on the board */}
             <div className="h-full">
               {/* Theme Column */}
               <div
-                  className="absolute"
-                  style={{
-                    top: '200px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '470px',
-                  }}
+                  className="absolute top-[22vh] left-1/2 w-full max-w-[520px] -translate-x-1/2 px-4"
                 >
                   {/* Sentence line: "Create a [select] wall called [input]" */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ color: '#775537', fontSize: 15, fontFamily: "'Patrick Hand', cursive", whiteSpace: 'nowrap' }}>
+                    <span style={{ color: '#775537', fontSize: 17, fontFamily: "'Patrick Hand', cursive", whiteSpace: 'nowrap' }}>
                       Create a
                     </span>
                     <select
                       value={selectedTheme}
                       onChange={(e) => setSelectedTheme(e.target.value)}
                       style={{
-                        padding: '10px 14px',
-                        fontSize: 15,
+                        padding: '12px 16px',
+                        fontSize: 17,
                         fontFamily: "'Patrick Hand', cursive",
                         border: '2px solid #c4a77d',
                         borderRadius: 10,
@@ -263,7 +254,7 @@ export default function CreateWallPage() {
                         color: '#775537',
                         outline: 'none',
                         cursor: 'pointer',
-                        minWidth: '140px',
+                        minWidth: '160px',
                       }}
                     >
                       {THEMES.map((theme) => (
@@ -272,7 +263,7 @@ export default function CreateWallPage() {
                         </option>
                       ))}
                     </select>
-                    <span style={{ color: '#775537', fontSize: 15, fontFamily: "'Patrick Hand', cursive", whiteSpace: 'nowrap' }}>
+                    <span style={{ color: '#775537', fontSize: 17, fontFamily: "'Patrick Hand', cursive", whiteSpace: 'nowrap' }}>
                       wall called <span style={{ color: '#dc2626' }}>*</span>
                     </span>
                     <input
@@ -286,10 +277,10 @@ export default function CreateWallPage() {
                       required
                       placeholder="e.g. Café Luna Guestbook"
                       style={{
-                        flex: '1 1 160px',
+                        flex: '1 1 180px',
                         minWidth: 0,
-                        padding: '10px 14px',
-                        fontSize: 15,
+                        padding: '12px 16px',
+                        fontSize: 17,
                         fontFamily: "'Patrick Hand', cursive",
                         border: `2px solid ${titleMissing ? '#dc2626' : '#c4a77d'}`,
                         borderRadius: 10,
@@ -302,7 +293,7 @@ export default function CreateWallPage() {
                     {titleMissing && (
                       <p style={{ 
                         color: '#dc2626', 
-                        fontSize: 13, 
+                        fontSize: 14, 
                         margin: '4px 0 0 0',
                         fontStyle: 'italic'
                       }}>
@@ -312,14 +303,14 @@ export default function CreateWallPage() {
                   </div>
 
                   {/* Selected theme description as helper text */}
-                  <p style={{ color: '#775537', opacity: 0.6, fontSize: 13, margin: '8px 0 0 0', fontStyle: 'italic' }}>
+                  <p style={{ color: '#775537', opacity: 0.6, fontSize: 14, margin: '8px 0 0 0', fontStyle: 'italic' }}>
                     {THEMES.find((t) => t.id === selectedTheme)?.description}
                   </p>
 
                   {/* Description input */}
                   <div style={{ marginTop: 20 }}>
                     <label
-                      className="block text-sm font-bold tracking-wide mb-2"
+                      className="block text-base font-bold tracking-wide mb-2"
                       style={{ color: '#775537' }}
                     >
                       Description (optional)
@@ -332,8 +323,8 @@ export default function CreateWallPage() {
                       rows={3}
                       style={{
                         width: '100%',
-                        padding: '10px 14px',
-                        fontSize: 15,
+                        padding: '12px 16px',
+                        fontSize: 17,
                         fontFamily: "'Patrick Hand', cursive",
                         border: '2px solid #c4a77d',
                         borderRadius: 10,
@@ -360,14 +351,12 @@ export default function CreateWallPage() {
               disabled={isCreating}
               className="rounded-xl px-12 py-3.5 text-base font-bold tracking-wider transition-all duration-150 select-none"
               style={{
-                backgroundColor: isCreating ? '#d9c47d' : '#fbe29d',
+                backgroundColor: '#FBE29D',
                 color: '#775537',
-                fontFamily: "'Patrick Hand', 'Caveat', cursive, sans-serif",
-                boxShadow: isCreating
-                  ? '0 2px 0 #775537, 0 2px 4px rgba(119,85,55,0.2)'
-                  : '0 5px 0 #775537, 0 6px 12px rgba(119,85,55,0.2)',
-                transform: isCreating ? 'translateY(3px)' : 'translateY(0)',
-                pointerEvents: isCreating ? 'none' : 'auto',
+                border: '2px solid #775537',
+                boxShadow: '0 5px 0 #775537, 0 6px 12px rgba(119,85,55,0.2)',
+                textDecoration: 'none',
+                transition: 'transform 0.1s ease, boxShadow 0.1s ease',
               }}
               onMouseEnter={(e) => {
                 if (!isCreating) {
@@ -414,7 +403,7 @@ export default function CreateWallPage() {
             style={{ top: '880px', left: '50%', transform: 'translateX(-50%)' }}
           >
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/w/playground')}
               className="inline-flex items-center gap-1.5 text-sm transition-all duration-200"
               style={{ color: '#775537' }}
               onMouseEnter={(e) => {

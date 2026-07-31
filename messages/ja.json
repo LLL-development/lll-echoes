@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "backToHome": "← ホームに戻る",
+    "settings": "⚙ 設定",
+    "deleteWall": "壁を削除"
+  },
+  "hint": {
+    "rotateDevice": "横向きで体験が最適になります"
+  },
+  "toolbar": {
+    "open": "ツールバーを開く",
+    "close": "ツールバーを閉じる"
+  },
+  "canvas": {
+    "empty": "まだノートがありません。",
+    "addFirst": "最初のノートを追加",
+    "subtitleDefault": "あなたの思いのための場所",
+    "subtitleEditMode": "青いハンドルをドラッグしてノートのサイズを調整",
+    "editModeHint": "ノートをドラッグして配置を変えてみましょう"
+  },
+  "note": {
+    "authorDefault": "匿名",
+    "resize": "ノートのサイズ調整",
+    "resizeDone": "サイズ調整完了",
+    "delete": "ノートを削除",
+    "confirmDelete": "このノートを削除しますか？",
+    "empty": "空のノート",
+    "tapToWrite": "タップして書く..."
+  },
+  "share": {
+    "button": "共有",
+    "playgroundButton": "自分だけの壁を作成"
+  },
+  "playground": {
+    "cta": "自分の壁を作成"
+  },
+  "title": {
+    "edit": "タイトルを編集"
+  },
+  "confirm": {
+    "deleteWall": "本当にこの壁を削除しますか？元に戻すことはできません。"
+  },
+  "toast": {
+    "wallDeleted": "壁を削除しました",
+    "deleteWallFailed": "壁の削除に失敗しました",
+    "playgroundRefreshing": "プレイグラウンドを準備中です。もう一度お試しください。",
+    "noDeleteAccess": "削除できません。ページを再読み込みしてください。",
+    "noEditAccess": "編集権限がありません。閲覧のみ可能です。",
+    "seededNotesInfo": "これらは体験用のノートです。ページを再読み込みするとリセットされます。自分のノートを追加することもできます。",
+    "deleteNoteFailed": "ノートの削除に失敗しました",
+    "saveChangesFailed": "変更の保存に失敗しました"
+  }
+}

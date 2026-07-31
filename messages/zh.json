@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "backToHome": "← 返回首页",
+    "settings": "⚙ 设置",
+    "deleteWall": "删除墙"
+  },
+  "hint": {
+    "rotateDevice": "横屏体验更佳"
+  },
+  "toolbar": {
+    "open": "打开工具栏",
+    "close": "关闭工具栏"
+  },
+  "canvas": {
+    "empty": "还没有任何笔记。",
+    "addFirst": "添加第一个笔记",
+    "subtitleDefault": "记录你的想法",
+    "subtitleEditMode": "拖动蓝色手柄调整笔记尺寸",
+    "editModeHint": "拖动笔记重新排列"
+  },
+  "note": {
+    "authorDefault": "匿名",
+    "resize": "调整笔记尺寸",
+    "resizeDone": "完成调整",
+    "delete": "删除笔记",
+    "confirmDelete": "确定要删除此笔记吗？",
+    "empty": "空笔记",
+    "tapToWrite": "点击即可书写..."
+  },
+  "share": {
+    "button": "分享",
+    "playgroundButton": "创建你自己的墙"
+  },
+  "playground": {
+    "cta": "创建我的墙"
+  },
+  "title": {
+    "edit": "编辑标题"
+  },
+  "confirm": {
+    "deleteWall": "确定要删除此墙吗？此操作无法撤销。"
+  },
+  "toast": {
+    "wallDeleted": "墙已删除",
+    "deleteWallFailed": "删除墙失败",
+    "playgroundRefreshing": "正在准备 playground 会话，请再试一次。",
+    "noDeleteAccess": "无法删除，请刷新页面后再试。",
+    "noEditAccess": "无编辑权限，仅可浏览。",
+    "seededNotesInfo": "这些是供你体验的示例笔记，刷新页面后会消失。你也可以添加自己的笔记。",
+    "deleteNoteFailed": "删除笔记失败",
+    "saveChangesFailed": "保存修改失败"
+  }
+}

@@ -10,7 +10,6 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
   const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [embedBgColor, setEmbedBgColor] = useState('#ffffff');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -34,7 +33,6 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
         if (data?.wall) {
           setTitle(data.wall.title || '');
           setDescription(data.wall.description || '');
-          setEmbedBgColor(data.wall.embed_bg_color || '#ffffff');
         }
         setLoading(false);
       })
@@ -58,7 +56,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
             'Content-Type': 'application/json',
             'X-Edit-Token': token || '',
           },
-          body: JSON.stringify({ title, description, embed_bg_color: embedBgColor }),
+          body: JSON.stringify({ title, description }),
         }
       );
 
@@ -71,7 +69,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
 
       showToast('Settings saved', 'success');
       setSaving(false);
-      setTimeout(() => router.push(`/w/${slug}`), 1000);
+      setTimeout(() => { window.location.href = `/w/${slug}`; }, 1000);
     } catch {
       showToast('Failed to save', 'error');
       setSaving(false);
@@ -105,7 +103,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
       }
 
       showToast('Wall deleted', 'success');
-      router.push('/');
+      router.push('/w/playground');
     } catch {
       showToast('Failed to delete', 'error');
       setDeleting(false);
@@ -131,7 +129,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
       >
         <div style={{ maxWidth: 480, textAlign: 'center' }}>
           <p style={{ fontSize: 20, marginBottom: 24, color: '#333' }}>
-            You don't have edit access to this wall. If you created it, make sure you're using the same browser and haven't cleared your data.
+            You don&rsquo;t have edit access to this wall. If you created it, make sure you&rsquo;re using the same browser and haven&rsquo;t cleared your data.
           </p>
           <a
             href={`/w/${slug}`}
@@ -263,37 +261,6 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
                 resize: 'vertical',
               }}
             />
-          </div>
-
-          <div style={{ marginBottom: 32 }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: 18,
-                color: '#775537',
-                marginBottom: 8,
-              }}
-            >
-              Embed Background Color
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <input
-                type="color"
-                value={embedBgColor}
-                onChange={(e) => setEmbedBgColor(e.target.value)}
-                defaultValue="#ffffff"
-                style={{
-                  width: 48,
-                  height: 48,
-                  border: '1px solid #c4a77d',
-                  borderRadius: 8,
-                  backgroundColor: '#f5f0e8',
-                  cursor: 'pointer',
-                  padding: 2,
-                }}
-              />
-              <span style={{ fontSize: 16, color: '#666' }}>{embedBgColor}</span>
-            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>

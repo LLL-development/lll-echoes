@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 
 interface SharePanelProps {
   wallSlug: string;
@@ -20,17 +21,18 @@ export default function SharePanel({
   onToggleContributions,
 }: SharePanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('link');
-  const [embedWidth, setEmbedWidth] = useState(800);
-  const [embedHeight, setEmbedHeight] = useState(600);
+  const [embedWidth, setEmbedWidth] = useState(1200);
+  const [embedHeight, setEmbedHeight] = useState(800);
   const [copied, setCopied] = useState<string | null>(null);
 
   const baseUrl = typeof window !== 'undefined'
     ? window.location.origin
     : 'https://echoes.ai';
 
-  const shareUrl = `${baseUrl}/w/${wallSlug}`;
   const contributeUrl = `${baseUrl}/w/${wallSlug}?contribute=1`;
+  const shareUrl = allowContributions ? contributeUrl : `${baseUrl}/w/${wallSlug}`;
   const screenshotUrl = `${baseUrl}/api/walls/${wallSlug}/screenshot`;
+  const previewUrl = `${shareUrl}${shareUrl.includes('?') ? '&' : '?'}embed=1`;
 
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     try {
@@ -197,7 +199,7 @@ export default function SharePanel({
                   style={{ width: Math.min(embedWidth, 360), height: Math.min(embedHeight, 270), margin: '0 auto' }}
                 >
                   <iframe
-                    src={shareUrl}
+                    src={previewUrl}
                     className="w-full h-full border-0"
                     title="Embed preview"
                   />
@@ -215,12 +217,14 @@ export default function SharePanel({
               </div>
 
               <div className="rounded-lg border border-slate-200 overflow-hidden bg-slate-100">
-                <img
+                <Image
                   src={screenshotUrl}
                   alt="Wall preview"
                   className="w-full h-auto"
+                  width={400}
+                  height={300}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,' + encodeURIComponent(
+                    (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml,' + encodeURIComponent(
                       '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%23f1f5f9"><rect width="400" height="300"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-size="14">Wall screenshot will appear here</text></svg>'
                     );
                   }}
