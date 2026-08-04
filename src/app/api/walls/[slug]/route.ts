@@ -96,11 +96,6 @@ export async function PATCH(
     );
   }
 
-  if (title !== undefined || description !== undefined) {
-    const cacheKey = createHash('sha256').update(`wall-screenshot-${slug}`).digest('hex').substring(0, 16);
-    await supabase.from('_screenshot_cache').delete().eq('key', cacheKey);
-  }
-
   // Invalidate the wall page cache so it fetches fresh data
   revalidatePath(`/w/${slug}`);
 

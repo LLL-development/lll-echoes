@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useTranslations } from 'next-intl';
 
 const DISMISS_KEY = 'echoes_playground_info_dismissed';
 
 export default function PlaygroundInfoCard() {
+  const t = useTranslations();
   const [dismissed, setDismissed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const { showToast } = useToast();
@@ -46,10 +48,10 @@ export default function PlaygroundInfoCard() {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <strong style={{ fontSize: 15 }}>🎮 Playground Mode</strong>
+        <strong style={{ fontSize: 15 }}>{t('playgroundInfo.title')}</strong>
         <button
           onClick={handleDismiss}
-          aria-label="Dismiss"
+          aria-label={t('playgroundInfo.dismiss')}
           style={{
             background: 'transparent',
             border: 'none',
@@ -64,7 +66,7 @@ export default function PlaygroundInfoCard() {
         </button>
       </div>
       <p style={{ marginTop: 8, marginBottom: 12, lineHeight: 1.4 }}>
-        Your notes are temporary and will be cleaned up after 24 hours.
+        {t('playgroundInfo.description')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Link
@@ -81,7 +83,7 @@ export default function PlaygroundInfoCard() {
             transition: 'background-color 0.1s ease',
           }}
         >
-          Create a permanent wall
+          {t('playgroundInfo.createPermanent')}
         </Link>
         <button
           onClick={() => {
@@ -98,7 +100,7 @@ export default function PlaygroundInfoCard() {
             fontWeight: 600,
           }}
         >
-          Keep my notes →
+          {t('playgroundInfo.keepNotes')}
         </button>
       </div>
     </div>

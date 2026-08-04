@@ -21,24 +21,24 @@ WHERE NOT EXISTS (SELECT 1 FROM walls WHERE slug = 'playground');
 -- Only seed when playground has no seeded notes yet (author_name = 'Echoes' or content-bearing notes)
 INSERT INTO notes (wall_id, image_url, content, x, y, width, height, rotation, author_name)
 SELECT w.id, '/themes/sticky-note/2.webp',
-       'The truffle risotto was absolutely divine. Creamy, rich, and perfectly seasoned. We will definitely be back!',
-       40, 60, 200, 140, -3, 'Sarah M.'
+        'Great food and friendly service. Would definitely come back again!',
+       40, 60, 200, 200, -3, 'Sarah M.'
 FROM walls w WHERE w.slug = 'playground'
   AND NOT EXISTS (
     SELECT 1 FROM notes n WHERE n.wall_id = w.id AND n.author_name = 'Sarah M.'
   )
 UNION ALL
 SELECT w.id, '/themes/sticky-note/3.webp',
-       'Best sushi I''ve had in the city. The omakase experience was worth every penny. Incredible attention to detail.',
-       260, 120, 220, 150, 5, 'James K.'
+        'Really enjoyed the food here. Nice atmosphere and good service.',
+       260, 120, 220, 220, 5, 'James K.'
 FROM walls w WHERE w.slug = 'playground'
   AND NOT EXISTS (
     SELECT 1 FROM notes n WHERE n.wall_id = w.id AND n.author_name = 'James K.'
   )
 UNION ALL
 SELECT w.id, '/themes/sticky-note/5.webp',
-       'Cozy atmosphere and the lasagna tasted just like my grandmother''s recipe. A real hidden gem — bring the whole family!',
-       500, 80, 210, 140, -2, 'Maria L.'
+        'Delicious food, generous portions, and a pleasant dining experience.',
+       500, 80, 210, 210, -2, 'Maria L.'
 FROM walls w WHERE w.slug = 'playground'
   AND NOT EXISTS (
     SELECT 1 FROM notes n WHERE n.wall_id = w.id AND n.author_name = 'Maria L.'

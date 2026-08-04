@@ -3,6 +3,12 @@ import { ToastProvider } from '@/components/toast/ToastProvider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
+export const metadata = {
+  icons: {
+    icon: '/favicon.webp',
+  },
+};
+
 export default async function RootLayout({
   children,
 }: {

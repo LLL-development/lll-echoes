@@ -24,7 +24,6 @@ export async function generateMetadata() {
       title: 'Echoes — Testimonials Wall',
       description: 'A visual community wall for testimonials and feedback.',
       type: 'website',
-      images: [{ url: '/api/walls/playground/screenshot' }],
     },
   };
 }

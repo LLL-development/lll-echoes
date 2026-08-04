@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { Note, NoteTemplate } from '@/types';
 import { THEME_IMAGES } from '@/lib/themes';
 import SharePanel from './SharePanel';
@@ -58,6 +59,7 @@ export default function WallViewer({
   onNoteSaved,
 }: WallViewerProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [notePositions, setNotePositions] = useState<Record<string, { x: number; y: number; width?: number; height?: number }>>(() => {
@@ -69,7 +71,6 @@ export default function WallViewer({
   });
   const [selectedTemplate, setSelectedTemplate] = useState(0);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [hasEditToken, setHasEditToken] = useState(false);
 
   useEffect(() => {
@@ -325,7 +326,7 @@ export default function WallViewer({
         if (!hasShownSeededNoteHintRef.current) {
           hasShownSeededNoteHintRef.current = true;
           showToast(
-            "These notes are here for you to try things out! They'll reset when you refresh the page. Feel free to add your own notes, too!",
+            t('toast.seededNotesInfo'),
             'info'
           );
         }
@@ -360,7 +361,7 @@ export default function WallViewer({
 
     if (changes.length === 0) return;
 
-    const headers = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (isPlayground) {
       if (!playgroundSessionId) return;
       headers['X-Playground-Session-Id'] = playgroundSessionId;
@@ -390,19 +391,21 @@ export default function WallViewer({
       for (const res of results) {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          showToast(data.error || 'Failed to save changes', 'error');
+          showToast(data.error || t('toast.saveChangesFailed'), 'error');
           break;
         }
       }
     } catch {
-      showToast('Failed to save changes', 'error');
+      showToast(t('toast.saveChangesFailed'), 'error');
     }
   }, [isPlayground, notePositions, noteRotations, notes, wall.slug, playgroundSessionId, showToast]);
 
   const handlePointerUp = useCallback((e?: React.PointerEvent | React.MouseEvent) => {
     if (draggingId) {
       const noteEl = canvasRef.current?.querySelector(`[data-note-id="${draggingId}"]`) as HTMLElement;
-      noteEl?.releasePointerCapture?.(e?.pointerId);
+      if (e && 'pointerId' in e) {
+        noteEl?.releasePointerCapture?.(e.pointerId);
+      }
     }
     if (draggingId || resizingId || rotatingId) {
       persistNoteChanges();
@@ -467,42 +470,19 @@ export default function WallViewer({
     setRotateStartRotation(noteRotations[noteId] || 0);
   }, [notePositions, noteRotations]);
 
-  const handleTitleSave = useCallback(async () => {
-    if (isEditingTitle && wallTitle !== (wall.title || wall.theme.charAt(0).toUpperCase() + wall.theme.slice(1))) {
-      if (!isPlayground) {
-        try {
-          const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
-          if (token) {
-            await fetch(`/api/walls/${wall.slug}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Edit-Token': token,
-              },
-              body: JSON.stringify({ title: wallTitle }),
-            });
-          }
-        } catch {
-          // Failed to persist title
-        }
-      }
-    }
-    setIsEditingTitle(false);
-  }, [isEditingTitle, wallTitle, wall.theme, wall.slug, isPlayground]);
-
   const handleDeleteNote = useCallback(async (noteId: string) => {
     try {
-      let headers = {};
+      let headers: Record<string, string> = {};
       if (isPlayground) {
         if (!playgroundSessionId) {
-          showToast('Cannot delete — please refresh and try again.', 'error');
+          showToast(t('toast.noDeleteAccess'), 'error');
           return;
         }
         headers['X-Playground-Session-Id'] = playgroundSessionId;
       } else {
         const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
         if (!token) {
-          showToast('No edit access. You can only view this wall.', 'error');
+          showToast(t('toast.noEditAccess'), 'error');
           return;
         }
         headers['X-Edit-Token'] = token;
@@ -515,7 +495,7 @@ export default function WallViewer({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        showToast(data.error || 'Failed to delete note', 'error');
+        showToast(data.error || t('toast.deleteNoteFailed'), 'error');
         return;
       }
 
@@ -525,7 +505,7 @@ export default function WallViewer({
         window.location.reload();
       }
     } catch {
-      showToast('Failed to delete note', 'error');
+      showToast(t('toast.deleteNoteFailed'), 'error');
     }
   }, [isPlayground, wall.slug, onNoteDelete, playgroundSessionId, showToast]);
 
@@ -538,7 +518,7 @@ export default function WallViewer({
 
   const handleSaveNote = useCallback(async (dataUrl: string, authorName: string, noteWidth: number, noteHeight: number) => {
     if (isPlayground && !playgroundSessionId) {
-      showToast('Preparing your playground session. Please try again.', 'error');
+      showToast(t('toast.playgroundRefreshing'), 'error');
       return;
     }
 
@@ -644,7 +624,7 @@ export default function WallViewer({
             }}
           >
             <span style={{ fontSize: '1.5rem' }}>📱</span>
-            <span>Rotate your device</span>
+            <span>{t('hint.rotateDevice')}</span>
           </div>
         </div>
       )}
@@ -676,95 +656,67 @@ export default function WallViewer({
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
-          {!isPlayground && (
-            <Link href="/" className="text-sm font-medium hover:opacity-70" style={{ color: '#775537' }}>
-              ← Back to home
-            </Link>
-          )}
-          {!isPlayground && (
-            <div className="flex items-center gap-2 md:gap-4">
-              <LocaleSwitcher />
-              {hasEditToken && (
-                <Link
-                  href={`/w/${wall.slug}/settings`}
-                  className="text-sm font-medium hover:opacity-70"
-                  style={{ color: '#775537' }}
-                >
-                  ⚙ Settings
-                </Link>
-              )}
-              <button
-                onClick={async () => {
-                  if (!window.confirm('Are you sure you want to delete this wall? This cannot be undone.')) return;
-                  try {
-                    const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
-                    if (!token) {
-                      showToast('No edit access. You can only view this wall.', 'error');
-                      return;
-                    }
-                    const res = await fetch(`/api/walls/${wall.slug}`, {
-                      method: 'DELETE',
-                      headers: { 'X-Edit-Token': token },
-                    });
-                    if (res.ok) {
-                      showToast('Wall deleted', 'success');
-                      router.push('/');
-                    } else {
-                      const data = await res.json();
-                      showToast(data.error || 'Failed to delete wall', 'error');
-                    }
-                  } catch {
-                    showToast('Failed to delete wall', 'error');
-                  }
-                }}
-                className="text-sm font-medium hover:opacity-70"
-                style={{ color: '#dc2626' }}
-              >
-                Delete Wall
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-start px-4 pt-16 pb-8 overflow-x-hidden">
-          <div className="mb-8 text-center">
-            {isEditingTitle ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={wallTitle}
-                  onChange={(e) => setWallTitle(e.target.value)}
-                  onBlur={handleTitleSave}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleTitleSave();
-                  }}
-                  className="text-4xl font-bold text-center border-b-2 bg-transparent outline-none border-slate-300 text-slate-900"
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <h1
-                  className="text-4xl font-bold cursor-pointer hover:opacity-70 text-slate-900"
-                  onClick={() => setIsEditingTitle(true)}
-                >
-                  {wallTitle}
-                </h1>
+        {!isEmbedded && (
+          <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
+            {!isPlayground && (
+                <Link href="/" className="text-sm font-medium hover:opacity-70" style={{ color: '#775537' }}>
+                {t('nav.backToHome')}
+              </Link>
+            )}
+            {!isPlayground && (
+              <div className="flex items-center gap-2 md:gap-4">
+                <LocaleSwitcher />
+                {hasEditToken && (
+                  <Link
+                    href={`/w/${wall.slug}/settings`}
+                    className="text-sm font-medium hover:opacity-70"
+                    style={{ color: '#775537' }}
+                    >
+                    {t('nav.settings')}
+                  </Link>
+                )}
                 <button
-                  onClick={() => setIsEditingTitle(true)}
-                  className="transition-colors text-slate-500 hover:text-slate-800"
-                  title="Edit title"
+                  onClick={async () => {
+                    if (!window.confirm(t('confirm.deleteWall'))) return;
+                    try {
+                      const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
+                      if (!token) {
+            showToast(t('toast.noEditAccess'), 'error');
+                        return;
+                      }
+                      const res = await fetch(`/api/walls/${wall.slug}`, {
+                        method: 'DELETE',
+                        headers: { 'X-Edit-Token': token },
+                      });
+                      if (res.ok) {
+                        showToast(t('toast.wallDeleted'), 'success');
+                        router.push('/');
+                      } else {
+                        const data = await res.json();
+                        showToast(data.error || t('toast.deleteWallFailed'), 'error');
+                      }
+                    } catch {
+                      showToast(t('toast.deleteWallFailed'), 'error');
+                    }
+                  }}
+                  className="text-sm font-medium hover:opacity-70"
+                  style={{ color: '#dc2626' }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                  </svg>
+                  {t('nav.deleteWall')}
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col items-center justify-start px-4 pt-16 pb-8 overflow-x-hidden">
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl font-bold text-slate-900">
+              {wallTitle}
+            </h1>
             {isPlayground && (
               <p className="mt-2 text-sm text-slate-400 italic" style={{ color: '#c0ddda' }}>
-                {editMode ? 'Drag the blue handles to resize notes' : 'A space for your thoughts'}
+                {editMode ? t('canvas.editModeHint') : t('canvas.subtitleDefault')}
               </p>
             )}
           </div>
@@ -776,7 +728,7 @@ export default function WallViewer({
                 {/* Desktop: right side positioning */}
                 <div
                   className="hidden md:flex fixed z-30 flex-col gap-2"
-                  style={{ left: 'calc(50% + 656px)', top: '9rem' }}
+                  style={{ left: 'calc(50% + 656px)', top: '12rem' }}
                 >
                   {notes.length > 0 && (
                     <button
@@ -789,7 +741,7 @@ export default function WallViewer({
                         backgroundColor: editMode ? '#4b5563' : '#775537',
                         boxShadow: '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
                       }}
-                      title={editMode ? 'Done Resizing' : 'Resize Notes'}
+                      title={editMode ? t('note.resizeDone') : t('note.resize')}
                     >
                       {editMode ? (
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -816,7 +768,7 @@ export default function WallViewer({
                       opacity: isPlayground ? 0.45 : 1,
                       cursor: isPlayground ? 'not-allowed' : 'pointer',
                     }}
-                    title={isPlayground ? 'Create your own wall to share' : 'Share'}
+                    title={isPlayground ? t('share.playgroundButton') : t('share.button')}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -848,7 +800,7 @@ export default function WallViewer({
                 <div className="flex absolute inset-0 items-center justify-center">
                   <div className="text-center">
                     <p className="text-lg text-slate-400">
-                      No notes yet on this wall.
+                      {t('canvas.empty')}
                     </p>
                     {!isPlayground && (
                       <button
@@ -877,7 +829,7 @@ export default function WallViewer({
                           e.currentTarget.style.boxShadow = '0 5px 0 #775537, 0 6px 12px rgba(119,85,55,0.2)';
                         }}
                       >
-                        Add the first note
+                        {t('canvas.addFirst')}
                       </button>
                     )}
                   </div>
@@ -943,11 +895,11 @@ export default function WallViewer({
                             {isPlayground ? (
                               <div className="text-center">
                                 <p className="text-sm text-slate-400 font-medium">
-                                  Tap to write...
+                                  {t('note.tapToWrite')}
                                 </p>
                               </div>
                             ) : (
-                              <p className="text-sm text-slate-600">Empty note</p>
+                              <p className="text-sm text-slate-600">{t('note.empty')}</p>
                             )}
                           </div>
                         )}
@@ -975,7 +927,7 @@ export default function WallViewer({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('Delete this note?')) {
+                            if (window.confirm(t('note.confirmDelete'))) {
                               handleDeleteNote(note.id);
                             }
                           }}
@@ -986,7 +938,7 @@ export default function WallViewer({
                             top: isMobile ? -16 : -12,
                             right: isMobile ? -16 : -12,
                           }}
-                          title="Delete note"
+                          title={t('note.delete')}
                         >
                           <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1065,7 +1017,7 @@ export default function WallViewer({
                       </svg>
                     )}
                     <span className="text-sm font-medium">
-                      {editMode ? 'Done' : 'Resize'}
+                      {editMode ? t('note.resizeDone') : t('note.resize')}
                     </span>
                   </button>
                 )}
@@ -1084,7 +1036,7 @@ export default function WallViewer({
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
-                  <span className="text-sm font-medium">Share</span>
+                  <span className="text-sm font-medium">{t('share.button')}</span>
                 </button>
               </div>
             )}
@@ -1120,7 +1072,7 @@ export default function WallViewer({
                     e.currentTarget.style.boxShadow = '0 5px 0 #775537';
                   }}
                 >
-                  Create My Board
+                  {t('playground.cta')}
                 </Link>
               </div>
             )}
@@ -1128,7 +1080,7 @@ export default function WallViewer({
             {/* Playground hint text */}
             {isPlayground && notes.length > 0 && !editMode && (
               <div className="text-center mt-2 text-xs text-slate-400">
-                Drag notes around to arrange them
+                {t('canvas.editModeHint')}
               </div>
             )}
           </div>
@@ -1145,7 +1097,7 @@ export default function WallViewer({
               backgroundColor: '#775537',
               boxShadow: '-3px 0 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
             }}
-            title={sidePanelOpen ? 'Close toolbar' : 'Open toolbar'}
+            title={sidePanelOpen ? t('toolbar.close') : t('toolbar.open')}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {sidePanelOpen ? (
@@ -1230,9 +1182,11 @@ export default function WallViewer({
         <SharePanel
           wallSlug={wall.slug}
           wallTheme={wall.theme}
+          wallTitle={wall.title || wall.theme.charAt(0).toUpperCase() + wall.theme.slice(1)}
           allowContributions={allowContributions}
           onClose={() => setSharePanelOpen(false)}
           onToggleContributions={handleToggleContributions}
+          notes={notes}
         />
       )}
 
@@ -1245,8 +1199,8 @@ export default function WallViewer({
             setEditorOpen(false);
             setSidePanelOpen(false);
           }}
-          onSave={(dataUrl: string, authorName: string, noteWidth: number, noteHeight: number) => {
-            handleSaveNote(dataUrl, authorName, noteWidth, noteHeight);
+          onSave={async (dataUrl: string, authorName: string, noteWidth: number, noteHeight: number) => {
+            await handleSaveNote(dataUrl, authorName, noteWidth, noteHeight);
           }}
         />
       )}
@@ -1275,20 +1229,20 @@ export default function WallViewer({
           }}
         >
           <h3 id="migration-dialog-title" style={{ color: '#775537', fontFamily: "'Patrick Hand', cursive", fontSize: 22, marginTop: 0, marginBottom: 8 }}>
-            Keep your notes
+            {t('migrate.title')}
           </h3>
             <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
-              We'll create a permanent wall for you with the same notes. You'll get an edit link to manage it.
+              {t('migrate.description')}
             </p>
             <label style={{ display: 'block', color: '#775537', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-              Wall title <span style={{ color: '#dc2626' }}>*</span>
+              {t('migrate.wallTitle')} <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"
               value={migrateTitle}
               onChange={(e) => setMigrateTitle(e.target.value)}
               maxLength={100}
-              placeholder="e.g. My Community Wall"
+              placeholder={t('migrate.placeholder')}
               autoFocus
               style={{
                 width: '100%', padding: '8px 12px', fontSize: 14,
@@ -1308,13 +1262,13 @@ export default function WallViewer({
                   fontFamily: "'Patrick Hand', cursive",
                 }}
               >
-                Cancel
+                {t('migrate.cancel')}
               </button>
               <button
                 disabled={migrating || !migrateTitle.trim()}
                 onClick={async () => {
                   if (!playgroundSessionId) {
-                    showToast('No session found. Please refresh and try again.', 'error');
+                    showToast(t('toast.noSessionFound'), 'error');
                     return;
                   }
                   setMigrating(true);
@@ -1326,17 +1280,17 @@ export default function WallViewer({
                     });
                     const data = await res.json();
                     if (!res.ok) {
-                      showToast(data.error || 'Failed to migrate notes', 'error');
+                      showToast(data.error || t('toast.migrateFailed'), 'error');
                     } else {
                       localStorage.setItem(`echoes_edit_token_${data.slug}`, data.editToken);
-                      showToast(`Wall created with ${data.notesCount} note(s)! Redirecting...`, 'success');
+                      showToast(t('toast.wallCreated', { count: data.notesCount }), 'success');
                       setTimeout(() => {
                         window.location.href = `/w/${data.slug}`;
                       }, 1200);
                       setMigrateOpen(false);
                     }
                   } catch {
-                    showToast('Network error. Please try again.', 'error');
+                    showToast(t('toast.networkError'), 'error');
                   } finally {
                     setMigrating(false);
                   }
@@ -1349,7 +1303,7 @@ export default function WallViewer({
                   fontFamily: "'Patrick Hand', cursive",
                 }}
               >
-                {migrating ? 'Creating...' : 'Create permanent wall'}
+                {migrating ? t('migrate.creating') : t('migrate.createWall')}
               </button>
             </div>
           </div>
