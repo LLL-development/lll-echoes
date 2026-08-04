@@ -3,11 +3,13 @@
 import { useEffect, useState, FormEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useTranslations } from 'next-intl';
 
 export default function WallSettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
   const { showToast } = useToast();
+  const t = useTranslations();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
@@ -62,22 +64,22 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(data.error || 'Failed to save', 'error');
+        showToast(data.error || t('toast.saveFailed'), 'error');
         setSaving(false);
         return;
       }
 
-      showToast('Settings saved', 'success');
+      showToast(t('toast.settingsSaved'), 'success');
       setSaving(false);
       setTimeout(() => { window.location.href = `/w/${slug}`; }, 1000);
     } catch {
-      showToast('Failed to save', 'error');
+      showToast(t('toast.saveFailed'), 'error');
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this wall? This cannot be undone.')) {
+    if (!window.confirm(t('confirm.deleteWall'))) {
       return;
     }
 
@@ -97,15 +99,15 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(data.error || 'Failed to delete', 'error');
+        showToast(data.error || t('toast.deleteFailed'), 'error');
         setDeleting(false);
         return;
       }
 
-      showToast('Wall deleted', 'success');
+      showToast(t('toast.wallDeleted'), 'success');
       router.push('/w/playground');
     } catch {
-      showToast('Failed to delete', 'error');
+      showToast(t('toast.deleteFailed'), 'error');
       setDeleting(false);
     }
   };
@@ -129,7 +131,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
       >
         <div style={{ maxWidth: 480, textAlign: 'center' }}>
           <p style={{ fontSize: 20, marginBottom: 24, color: '#333' }}>
-            You don&rsquo;t have edit access to this wall. If you created it, make sure you&rsquo;re using the same browser and haven&rsquo;t cleared your data.
+            {t('settings.noAccessTitle')}
           </p>
           <a
             href={`/w/${slug}`}
@@ -140,7 +142,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
               cursor: 'pointer',
             }}
           >
-            Back to wall
+            {t('settings.noAccessBack')}
           </a>
         </div>
       </div>
@@ -169,7 +171,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
             marginBottom: 32,
           }}
         >
-          ← Back to wall
+          {t('settings.backToWall')}
         </a>
 
         <h1
@@ -181,7 +183,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
             fontFamily: "'Patrick Hand', cursive",
           }}
         >
-          Wall Settings
+          {t('settings.pageTitle')}
         </h1>
 
         {saved && (
@@ -195,7 +197,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
               fontSize: 18,
             }}
           >
-            Saved!
+            {t('settings.saved')}
           </div>
         )}
 
@@ -209,14 +211,14 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
                 marginBottom: 8,
               }}
             >
-              Title
+              {t('settings.titleLabel')}
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
-              placeholder="My Wall"
+              placeholder={t('settings.titlePlaceholder')}
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -240,13 +242,13 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
                 marginBottom: 8,
               }}
             >
-              Description
+              {t('settings.descriptionLabel')}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={200}
-              placeholder="A wall for sharing..."
+              placeholder={t('settings.descriptionPlaceholder')}
               rows={4}
               style={{
                 width: '100%',
@@ -279,7 +281,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
                 opacity: saving ? 0.6 : 1,
               }}
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('settings.saving') : t('settings.save')}
             </button>
 
             <button
@@ -298,7 +300,7 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
                 opacity: deleting ? 0.6 : 1,
               }}
             >
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? t('settings.deleting') : t('settings.delete')}
             </button>
           </div>
         </form>

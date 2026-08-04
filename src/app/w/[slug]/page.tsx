@@ -31,7 +31,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title,
       description,
       type: 'website',
-      images: [{ url: `/api/walls/${slug}/screenshot` }],
     },
   };
 }

@@ -4,20 +4,22 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useTranslations } from 'next-intl';
 
 type CreatedWall = { slug: string; editToken: string; editLink: string };
 
 const THEMES = [
-  { id: 'testimonials', label: 'Testimonials', icon: '/icons/testimony.webp', description: 'Gather reviews, stories, and appreciation from the people your community' },
-  { id: 'feedback', label: 'Feedback', icon: '/icons/feedback.webp', description: 'Gather input, suggestions, or reactions from your audience' },
-  { id: 'ideas', label: 'Ideas', icon: '/icons/ideas.webp', description: 'Brainstorm and share concepts' },
-  { id: 'memory', label: 'Memory', icon: '/icons/memory.webp', description: 'moments, messages, or memories' },
-  { id: 'others', label: 'Others', icon: '/icons/others.webp', description: 'Customize for any purpose' },
+  { id: 'testimonials', icon: '/icons/testimony.webp' },
+  { id: 'feedback', icon: '/icons/feedback.webp' },
+  { id: 'ideas', icon: '/icons/ideas.webp' },
+  { id: 'memory', icon: '/icons/memory.webp' },
+  { id: 'others', icon: '/icons/others.webp' },
 ];
 
 export default function CreateWallPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const t = useTranslations();
   const [selectedTheme, setSelectedTheme] = useState(THEMES[0].id);
   const [isCreating, setIsCreating] = useState(false);
   const [createdWall, setCreatedWall] = useState<CreatedWall | null>(null);
@@ -49,7 +51,7 @@ export default function CreateWallPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        showToast(errorData.error || 'Failed to create wall', 'error');
+        showToast(errorData.error || t('create.failedToCreate'), 'error');
         setIsCreating(false);
         return;
       }
@@ -58,7 +60,7 @@ export default function CreateWallPage() {
       localStorage.setItem(`echoes_edit_token_${data.slug}`, data.editToken);
       setCreatedWall({ slug: data.slug, editToken: data.editToken, editLink: data.editLink });
     } catch (err) {
-      showToast('Network error. Please try again.', 'error');
+      showToast(t('toast.networkError'), 'error');
       setIsCreating(false);
     }
   }, [selectedTheme, title, description, showToast]);
@@ -77,15 +79,15 @@ export default function CreateWallPage() {
         <div className="relative min-h-screen flex items-center justify-center">
           <div className="max-w-lg w-full mx-4 p-8 rounded-2xl shadow-lg" style={{ backgroundColor: '#ffffff', border: '2px solid #775537' }}>
             <h1 className="text-3xl font-bold mb-2" style={{ color: '#775537', fontFamily: "'Patrick Hand', cursive" }}>
-              Your wall is ready!
+              {t('create.wallReady')}
             </h1>
             <p className="text-sm mb-6" style={{ color: '#775537', opacity: 0.7 }}>
-              Save the link below. You&rsquo;ll need it to manage your wall.
+              {t('create.saveLinkMessage')}
             </p>
 
             {/* Edit Link */}
             <div className="mb-4">
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#775537' }}>Edit Link</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#775537' }}>{t('create.editLinkLabel')}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -113,11 +115,11 @@ export default function CreateWallPage() {
                   className="rounded-lg px-4 py-2 text-sm font-medium"
                   style={{ backgroundColor: '#775537', color: '#FBE29D' }}
                 >
-                  {copied ? 'Copied!' : copyError ? 'Copy failed — select the link manually' : 'Copy'}
+                  {copied ? t('create.copied') : copyError ? t('create.copyFailed') : t('create.copy')}
                 </button>
                 {copyError && (
                   <p className="text-xs mt-1" style={{ color: '#991B1B' }}>
-                    Could not copy. Select the link above and copy it manually.
+                    {t('create.copyManualError')}
                   </p>
                 )}
               </div>
@@ -126,7 +128,7 @@ export default function CreateWallPage() {
             {/* Warning */}
             <div className="mb-6 px-4 py-3 rounded-lg" style={{ backgroundColor: '#FFF5F5', border: '1px solid #FCA5A5' }}>
               <p className="text-xs font-medium" style={{ color: '#991B1B' }}>
-                ⚠️ This link is your only way to manage the wall. If you switch browsers or clear your data, you&rsquo;ll lose edit access.
+                {t('create.linkWarning')}
               </p>
             </div>
 
@@ -185,10 +187,10 @@ export default function CreateWallPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Loading...
+                  {t('create.loading')}
                 </span>
               ) : (
-                'Go to Wall'
+                t('create.goToWall')
               )}
             </button>
           </div>
@@ -213,10 +215,10 @@ export default function CreateWallPage() {
               className="text-3xl font-bold"
               style={{ color: '#775537', fontFamily: "'Patrick Hand', 'Caveat', cursive, sans-serif" }}
             >
-              Build Your Board
+              {t('create.title')}
             </h1>
             <p className="text-base mt-1 italic" style={{ color: '#775537', opacity: 0.7 }}>
-              A shared space for notes, stories, and memories
+              {t('create.subtitle')}
             </p>
           </div>
 
@@ -239,7 +241,7 @@ export default function CreateWallPage() {
                   {/* Sentence line: "Create a [select] wall called [input]" */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ color: '#775537', fontSize: 17, fontFamily: "'Patrick Hand', cursive", whiteSpace: 'nowrap' }}>
-                      Create a
+                      {t('create.createALabel')}
                     </span>
                     <select
                       value={selectedTheme}
@@ -259,12 +261,12 @@ export default function CreateWallPage() {
                     >
                       {THEMES.map((theme) => (
                         <option key={theme.id} value={theme.id}>
-                          {theme.label}
+                          {t(`create.themes.${theme.id}`)}
                         </option>
                       ))}
                     </select>
                     <span style={{ color: '#775537', fontSize: 17, fontFamily: "'Patrick Hand', cursive", whiteSpace: 'nowrap' }}>
-                      wall called <span style={{ color: '#dc2626' }}>*</span>
+                      {t('create.wallCalledLabel')} <span style={{ color: '#dc2626' }}>*</span>
                     </span>
                     <input
                       type="text"
@@ -275,7 +277,7 @@ export default function CreateWallPage() {
                       }}
                       maxLength={100}
                       required
-                      placeholder="e.g. Café Luna Guestbook"
+                      placeholder={t('create.titlePlaceholder')}
                       style={{
                         flex: '1 1 180px',
                         minWidth: 0,
@@ -297,15 +299,17 @@ export default function CreateWallPage() {
                         margin: '4px 0 0 0',
                         fontStyle: 'italic'
                       }}>
-                        Please give your wall a name.
+                        {t('create.titleRequired')}
                       </p>
                     )}
                   </div>
 
                   {/* Selected theme description as helper text */}
-                  <p style={{ color: '#775537', opacity: 0.6, fontSize: 14, margin: '8px 0 0 0', fontStyle: 'italic' }}>
-                    {THEMES.find((t) => t.id === selectedTheme)?.description}
-                  </p>
+                    {THEMES.find((theme) => theme.id === selectedTheme) && (
+                      <p style={{ color: '#775537', opacity: 0.6, fontSize: 14, margin: '8px 0 0 0', fontStyle: 'italic' }}>
+                        {t(`create.themes.${selectedTheme}Desc`)}
+                      </p>
+                    )}
 
                   {/* Description input */}
                   <div style={{ marginTop: 20 }}>
@@ -313,13 +317,13 @@ export default function CreateWallPage() {
                       className="block text-base font-bold tracking-wide mb-2"
                       style={{ color: '#775537' }}
                     >
-                      Description (optional)
+                      {t('create.descriptionLabel')}
                     </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       maxLength={200}
-                      placeholder="Share a message or story"
+                      placeholder={t('create.descriptionPlaceholder')}
                       rows={3}
                       style={{
                         width: '100%',
@@ -389,10 +393,10 @@ export default function CreateWallPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Creating...
+                  {t('create.creating')}
                 </div>
               ) : (
-                'Create Board'
+                t('create.createBoard')
               )}
             </button>
           </div>
@@ -413,7 +417,7 @@ export default function CreateWallPage() {
                 e.currentTarget.style.opacity = '1';
               }}
             >
-              ← Back Home
+              {t('create.backHome')}
             </button>
           </div>
         </>

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useTranslations } from 'next-intl';
 
 interface NotepadEditorProps {
   imageUrl: string;
@@ -46,6 +47,7 @@ const PEN_WIDTHS = [2, 4, 6, 8];
 
 export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, initialAuthorName = '' }: NotepadEditorProps) {
   const { showToast } = useToast();
+  const t = useTranslations('notepadEditor');
   const [overlays, setOverlays] = useState<OverlayItem[]>([]);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -54,6 +56,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
   const [penColor, setPenColor] = useState('#000000');
   const [penWidth, setPenWidth] = useState(4);
   const [isEraser, setIsEraser] = useState(false);
+  const [textMode, setTextMode] = useState<'edit' | 'move'>('move');
   const [currentStroke, setCurrentStroke] = useState<PenStroke | null>(null);
   const [authorName, setAuthorName] = useState(initialAuthorName);
   const [imageError, setImageError] = useState<{ kind: 'format' | 'size'; message: string } | null>(null);
@@ -63,7 +66,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
   const updateOverlayRef = useRef<(id: string, updates: Partial<OverlayItem>) => void>(() => {});
   const previewRef = useRef<HTMLDivElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
-  const drawingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasMapRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
   const dragRef = useRef<{ id: string | null; startX: number; startY: number; origX: number; origY: number }>({
     id: null,
     startX: 0,
@@ -81,6 +84,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
     origW: 0,
     origH: 0,
   });
+  const pendingClickRef = useRef<{ id: string; type: 'text' | 'pen'; x: number; y: number } | null>(null);
 
   const addText = () => {
     const id = `text-${Date.now()}`;
@@ -93,7 +97,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         y: 20,
         width: 150,
         height: 40,
-        content: 'Type here...',
+        content: t('placeholder.typeHere'),
         fontSize: 16,
         fontScale: 16 / 40,
         fontFamily: 'inherit',
@@ -160,7 +164,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
 
   const getCanvasPoint = (e: React.MouseEvent | React.TouchEvent) => {
     if (!activeOverlay) return { x: 0, y: 0 };
-    const canvas = drawingCanvasRef.current;
+    const canvas = canvasMapRef.current.get(activeOverlay);
     if (!canvas) return { x: 0, y: 0 };
     
     const overlay = overlaysRef.current.find((o) => o.id === activeOverlay);
@@ -195,6 +199,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
       isEraser,
     };
     setCurrentStroke(stroke);
+    console.log('handleDrawingMouseDown: stroke created', stroke);
     setIsDrawing(true);
   };
 
@@ -208,6 +213,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
   };
 
   const handleDrawingMouseUp = () => {
+    console.log('handleDrawingMouseUp called:', { isDrawing, currentStroke: !!currentStroke, activeOverlay });
     if (!isDrawing || !currentStroke || !activeOverlay) return;
     setOverlays((prev) =>
       prev.map((o) =>
@@ -216,6 +222,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
           : o
       )
     );
+    console.log('handleDrawingMouseUp: stroke saved to overlay');
     setCurrentStroke(null);
   };
 
@@ -234,12 +241,12 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
     setImageError(null);
     const allowedTypes = ['image/webp', 'image/png', 'image/jpeg', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      setImageError({ kind: 'format', message: 'This image format isn\'t supported. Please use WebP, PNG, or JPG.' });
+      setImageError({ kind: 'format', message: t('imageError.format') });
       e.target.value = '';
       return;
     }
     if (file.size > 1048576) {
-      setImageError({ kind: 'size', message: 'This image is larger than 1 MB. Please resize or compress it.' });
+      setImageError({ kind: 'size', message: t('imageError.size') });
       e.target.value = '';
       return;
     }
@@ -251,7 +258,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
       );
     };
     reader.readAsDataURL(file);
-  }, [activeOverlay]);
+  }, [activeOverlay, t]);
 
   const updateOverlay = useCallback((id: string, updates: Partial<OverlayItem>) => {
     setOverlays((prev) => prev.map((o) => (o.id === id ? { ...o, ...updates } : o)));
@@ -259,17 +266,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
 
   // Render pen strokes on canvas
   useEffect(() => {
-    const canvas = drawingCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const penOverlay = overlays.find((o) => o.type === 'pen' && o.id === activeOverlay);
-    if (!penOverlay) return;
-
-    const drawStroke = (stroke: PenStroke) => {
+    console.log('Rendering useEffect:', { overlayCount: overlays.filter(o => o.type === 'pen').length, activeOverlay, hasCurrentStroke: !!currentStroke });
+    const drawStroke = (ctx: CanvasRenderingContext2D, stroke: PenStroke) => {
       if (stroke.points.length < 2) return;
       ctx.beginPath();
       ctx.strokeStyle = stroke.color;
@@ -288,13 +286,22 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
       ctx.stroke();
     };
 
-    (penOverlay.strokes || []).forEach(drawStroke);
+    overlays.filter((o) => o.type === 'pen').forEach((penOverlay) => {
+      console.log('Rendering canvas for:', penOverlay.id, 'strokes:', (penOverlay.strokes || []).length);
+      const canvas = canvasMapRef.current.get(penOverlay.id);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    if (currentStroke && currentStroke.points.length > 0 && activeOverlay) {
-      drawStroke(currentStroke);
-    }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      (penOverlay.strokes || []).forEach((stroke) => drawStroke(ctx, stroke));
 
-    ctx.globalCompositeOperation = 'source-over';
+      if (penOverlay.id === activeOverlay && currentStroke && currentStroke.points.length > 0) {
+        drawStroke(ctx, currentStroke);
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+    });
   }, [overlays, activeOverlay, currentStroke]);
 
   // Draft restore on mount
@@ -360,21 +367,46 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
     };
   }, [overlays, authorName, imageUrl]);
 
+  // Clean up draft when editor closes
+  useEffect(() => {
+    return () => {
+      try {
+        localStorage.removeItem(`echoes_draft_${imageUrl}`);
+      } catch {
+        // ignore
+      }
+    };
+  }, [imageUrl]);
+
   // Keep ref in sync with isTextEditing state
   useEffect(() => {
     isTextEditingRef.current = isTextEditing;
   }, [isTextEditing]);
 
+  // Auto-focus textarea when entering text editing mode
+  useEffect(() => {
+    if (isTextEditing && textInputRef.current) {
+      textInputRef.current.focus();
+    }
+  }, [isTextEditing, activeOverlay]);
+
   // Drag logic
   const handleOverlayMouseDown = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    e.preventDefault();
+    const overlay = overlaysRef.current.find((o) => o.id === id);
+    const target = e.target as Element;
+    const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
+    // If clicking on a text overlay's textarea, let it focus naturally
+    if (overlay?.type === 'text' && isTextarea) {
+      setActiveOverlay(id);
+      return;
+    }
+    e.preventDefault(); // Only prevent default for non-textarea clicks
     setActiveOverlay(id);
     setIsTextEditing(false);
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    const overlay = overlaysRef.current.find((o) => o.id === id);
     if (!overlay) return;
     dragRef.current = {
       id,
@@ -388,7 +420,11 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
   // Click to select overlay (when not dragging)
   const handleOverlayClick = useCallback((id: string) => {
     setActiveOverlay(id);
-    setIsTextEditing(false);
+    const overlay = overlaysRef.current.find((o) => o.id === id);
+    // For text overlays, let onFocus/onBlur manage isTextEditing
+    if (overlay?.type !== 'text') {
+      setIsTextEditing(false);
+    }
   }, []);
 
   // Resize logic
@@ -419,6 +455,31 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      // Pending click threshold check — distinguish click (edit/draw) from drag (move)
+      if (pendingClickRef.current) {
+        const dx = e.clientX - pendingClickRef.current.x;
+        const dy = e.clientY - pendingClickRef.current.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 3) {
+          // Movement exceeded threshold — start drag, cancel edit
+          const overlay = overlaysRef.current.find((o) => o.id === pendingClickRef.current!.id);
+          if (overlay) {
+            setIsTextEditing(false);
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            dragRef.current = {
+              id: pendingClickRef.current.id,
+              startX: pendingClickRef.current.x,
+              startY: pendingClickRef.current.y,
+              origX: overlay.x,
+              origY: overlay.y,
+            };
+          }
+          pendingClickRef.current = null;
+          e.preventDefault();
+        }
+        return;
+      }
       // Resize (check first — resize handle mousedown fires after parent's mousedown)
       if (resizeRef.current.id) {
         e.preventDefault();
@@ -466,6 +527,14 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
     };
 
     const handleMouseUp = () => {
+      // If pending click wasn't cancelled (no significant movement), confirm editing/drawing mode
+      if (pendingClickRef.current) {
+        if (pendingClickRef.current.type === 'pen') {
+          setIsDrawing(true);
+        }
+        // For 'text', isTextEditing was already set to true on mousedown
+        pendingClickRef.current = null;
+      }
       dragRef.current.id = null;
       resizeRef.current.id = null;
     };
@@ -486,7 +555,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
     try {
       const notepadImg = previewRef.current.querySelector('img') as HTMLImageElement | null;
       if (!notepadImg) {
-        showToast('No notepad loaded. Please try again.', 'error');
+        showToast(t('toast.noNotepadLoaded'), 'error');
         setIsSaving(false);
         return;
       }
@@ -635,7 +704,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         // ignore
       }
     } catch (err) {
-      showToast('Failed to save note. Please try again.', 'error');
+      showToast(t('toast.saveNoteFailed'), 'error');
       setIsSaving(false);
     }
   };
@@ -663,19 +732,19 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
               onClick={addText}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              + Add Text
+              {t('addText')}
             </button>
             <button
               onClick={addImage}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              + Add Image
+              {t('addImage')}
             </button>
             <button
               onClick={addPen}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              + Pen
+              {t('addPen')}
             </button>
           </div>
 
@@ -684,7 +753,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
               {activeOverlayData.type === 'text' ? (
                 <>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Text</label>
+                    <label className="mb-1 block text-xs text-slate-500">{t('text')}</label>
                     <textarea
                       value={activeOverlayData.content}
                       onChange={(e) => updateOverlay(activeOverlay!, { content: e.target.value })}
@@ -693,7 +762,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Font Style</label>
+                    <label className="mb-1 block text-xs text-slate-500">{t('fontStyle')}</label>
                     <select
                       value={activeOverlayData.fontFamily}
                       onChange={(e) => {
@@ -715,19 +784,19 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       }}
                       className="w-full rounded border border-slate-300 p-2 text-sm focus:outline-none"
                     >
-                      <option value="inherit">Default (Aa)</option>
-                      <option value="'Caveat Brush', cursive" style={{ fontFamily: "'Caveat Brush', cursive" }}>Caveat Brush (Aa)</option>
-                      <option value="'Patrick Hand', cursive" style={{ fontFamily: "'Patrick Hand', cursive" }}>Patrick Hand (Aa)</option>
-                      <option value="'Indie Flower', cursive" style={{ fontFamily: "'Indie Flower', cursive" }}>Indie Flower (Aa)</option>
-                      <option value="'Shadows Into Light', cursive" style={{ fontFamily: "'Shadows Into Light', cursive" }}>Shadows Into Light (Aa)</option>
-                      <option value="'Dancing Script', cursive" style={{ fontFamily: "'Dancing Script', cursive" }}>Dancing Script (Aa)</option>
-                      <option value="'Caladea', serif" style={{ fontFamily: "'Caladea', serif" }}>Caladea (Aa)</option>
-                      <option value="'Courier New', monospace" style={{ fontFamily: "'Courier New', monospace" }}>Courier New (Aa)</option>
+                      <option value="inherit">{t('font.default')}</option>
+                      <option value="'Caveat Brush', cursive" style={{ fontFamily: "'Caveat Brush', cursive" }}>{t('font.caveatBrush')}</option>
+                      <option value="'Patrick Hand', cursive" style={{ fontFamily: "'Patrick Hand', cursive" }}>{t('font.patrickHand')}</option>
+                      <option value="'Indie Flower', cursive" style={{ fontFamily: "'Indie Flower', cursive" }}>{t('font.indieFlower')}</option>
+                      <option value="'Shadows Into Light', cursive" style={{ fontFamily: "'Shadows Into Light', cursive" }}>{t('font.shadowsIntoLight')}</option>
+                      <option value="'Dancing Script', cursive" style={{ fontFamily: "'Dancing Script', cursive" }}>{t('font.dancingScript')}</option>
+                      <option value="'Caladea', serif" style={{ fontFamily: "'Caladea', serif" }}>{t('font.caladea')}</option>
+                      <option value="'Courier New', monospace" style={{ fontFamily: "'Courier New', monospace" }}>{t('font.courierNew')}</option>
                     </select>
                   </div>
                   <div>
                     <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Font Size</span>
+                      <span className="text-xs text-slate-500">{t('font.size')}</span>
                       <span
                         className="text-xs font-medium tabular-nums"
                         style={{
@@ -740,7 +809,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                           fontFamily: "'Patrick Hand', cursive",
                         }}
                       >
-                        {activeOverlayData.fontSize}px
+                        {t('font.sizeValue', { size: activeOverlayData.fontSize })}
                       </span>
                     </div>
                     <select
@@ -755,12 +824,12 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       className="w-full rounded border border-slate-300 p-2 text-sm focus:outline-none"
                     >
                       {FONT_SIZES.map((s) => (
-                        <option key={s} value={s}>{s}px</option>
+                        <option key={s} value={s}>{t('font.sizeUnit', { size: s })}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Color</label>
+                    <label className="mb-1 block text-xs text-slate-500">{t('color')}</label>
                     <div className="flex gap-1 flex-wrap">
                       {TEXT_COLORS.map((c) => (
                         <button
@@ -773,7 +842,38 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Alignment</label>
+                    <label className="mb-1 block text-xs text-slate-500">{t('mode')}</label>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setTextMode('edit')}
+                        className={`flex-1 rounded border px-2 py-1.5 text-xs font-medium flex items-center justify-center gap-1 ${
+                          textMode === 'edit'
+                            ? 'bg-slate-800 text-white border-slate-800'
+                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        {t('edit')}
+                      </button>
+                      <button
+                        onClick={() => setTextMode('move')}
+                        className={`flex-1 rounded border px-2 py-1.5 text-xs font-medium flex items-center justify-center gap-1 ${
+                          textMode === 'move'
+                            ? 'bg-slate-800 text-white border-slate-800'
+                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                        {t('drag')}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">{t('alignment')}</label>
                     <div className="flex gap-1">
                       {(['left', 'center', 'right'] as const).map((align) => (
                         <button
@@ -803,7 +903,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Style</label>
+                    <label className="mb-1 block text-xs text-slate-500">{t('style')}</label>
                     <div className="flex gap-1">
                       <button
                         onClick={() => updateOverlay(activeOverlay!, { bold: !activeOverlayData.bold })}
@@ -813,7 +913,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                             : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        B
+                        {t('bold')}
                       </button>
                       <button
                         onClick={() => updateOverlay(activeOverlay!, { italic: !activeOverlayData.italic })}
@@ -823,7 +923,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                             : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        I
+                        {t('italic')}
                       </button>
                     </div>
                   </div>
@@ -832,7 +932,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                 activeOverlayData.type === 'pen' ? (
                   <>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">Pen Color</label>
+                      <label className="mb-1 block text-xs text-slate-500">{t('penColor')}</label>
                       <div className="flex gap-1 flex-wrap">
                         {TEXT_COLORS.map((c) => (
                           <button
@@ -845,7 +945,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">Stroke Width</label>
+                      <label className="mb-1 block text-xs text-slate-500">{t('strokeWidth')}</label>
                       <div className="flex gap-1">
                         {PEN_WIDTHS.map((w) => (
                           <button
@@ -856,14 +956,14 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                                 ? 'bg-slate-800 text-white border-slate-800'
                                 : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
                             }`}
-                          >
-                            {w}px
+                             >
+                            {t('font.sizeUnit', { size: w })}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">Mode</label>
+                      <label className="mb-1 block text-xs text-slate-500">{t('mode')}</label>
                       <div className="flex gap-1">
                         <button
                           onClick={() => setIsDrawing(true)}
@@ -875,8 +975,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          Draw
+                          </svg                          >
+                          {t('draw')}
                         </button>
                         <button
                           onClick={() => setIsDrawing(false)}
@@ -888,13 +988,13 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                          </svg>
-                          Drag
+                          </svg                          >
+                          {t('drag')}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">Tool</label>
+                      <label className="mb-1 block text-xs text-slate-500">{t('tool')}</label>
                       <div className="flex gap-1">
                         <button
                           onClick={() => setIsEraser(false)}
@@ -906,8 +1006,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          Pen
+                          </svg                          >
+                          {t('pen')}
                         </button>
                         <button
                           onClick={() => setIsEraser(true)}
@@ -919,8 +1019,8 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                         >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828zm2.121.707a1 1 0 0 0-1.414 0L4.16 7.547l5.293 5.293 4.633-4.633a1 1 0 0 0 0-1.414zM8.746 13.547 3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293z"/>
-                          </svg>
-                          Eraser
+                          </svg                          >
+                          {t('eraser')}
                         </button>
                       </div>
                     </div>
@@ -928,12 +1028,12 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       onClick={clearPenStrokes}
                       className="w-full rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50"
                     >
-                      Clear Drawing
+                      {t('clearDrawing')}
                     </button>
                   </>
                 ) : (
                   <div>
-                    <label className="mb-1 block text-xs text-slate-500">Upload Image</label>
+                    <label className="mb-1 block text-xs text-slate-500">{t('uploadImage')}</label>
                     {imageError && (
                       <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2.5 space-y-2">
                         <p className="text-xs text-red-700">{imageError.message}</p>
@@ -943,7 +1043,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                           rel="noopener noreferrer"
                           className="inline-block w-full rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white text-center hover:bg-red-700 transition-colors"
                         >
-                          Open Image Converter
+                          {t('openImageConverter')}
                         </a>
                         <button
                           onClick={async () => {
@@ -960,7 +1060,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                           }}
                           className="inline-block w-full rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 bg-white hover:bg-red-50 transition-colors"
                         >
-                          {copied ? 'Copied!' : 'Copy converter link'}
+                          {copied ? t('copied') : t('copyConverterLink')}
                         </button>
                       </div>
                     )}
@@ -977,18 +1077,18 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                 onClick={() => removeOverlay(activeOverlay!)}
                 className="w-full rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
               >
-                Remove
+                {t('remove')}
               </button>
             </div>
           )}
 
           <div className="space-y-2">
-            <label className="block text-xs text-slate-500">Your name (optional)</label>
+            <label className="block text-xs text-slate-500">{t('yourNameOptional')}</label>
             <input
               type="text"
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
-              placeholder="Anonymous"
+              placeholder={t('anonymous')}
               className="w-full rounded border border-slate-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -1000,14 +1100,14 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
               className="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSaving ? (
-                <>
+                  <>
                   <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
-                  Saving...
+                  {t('saving')}
                 </>
-              ) : 'Save to Wall'}
+              ) : t('saveToWall')}
             </button>
           </div>
         </div>
@@ -1021,12 +1121,13 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
               if (e.target === e.currentTarget) {
                 setActiveOverlay(null);
                 setIsTextEditing(false);
+                setIsDrawing(false);
               }
             }}
           >
             <Image
               src={imageUrl}
-              alt="Notepad"
+              alt={t('notepad')}
               className="block max-h-[500px] max-w-full object-contain"
               draggable={false}
               width={500}
@@ -1042,16 +1143,47 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                   top: overlay.y,
                   width: overlay.width,
                   height: overlay.height,
-                  cursor: isTextEditing ? 'default' : activeOverlay === overlay.id ? 'move' : 'default',
+                  cursor: textMode === 'move' && activeOverlay === overlay.id ? 'move' : 'default',
                   zIndex: activeOverlay === overlay.id ? 10 : 1,
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  const target = e.target as Element;
+                  const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
+                  if (isTextarea && textMode === 'edit') {
+                    return; // Let textarea handle its own click in edit mode
+                  }
                   handleOverlayClick(overlay.id);
                 }}
                 onMouseDown={(e) => {
-                  if (overlay.type === 'pen' && activeOverlay === overlay.id && isDrawing) {
-                    e.stopPropagation();
+                  if (overlay.type === 'text') {
+                    const target = e.target as Element;
+                    const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
+
+                    if (isTextarea) {
+                      if (activeOverlay === overlay.id && !isTextEditing) {
+                        handleOverlayMouseDown(e, overlay.id);
+                        return;
+                      }
+                      setActiveOverlay(overlay.id);
+                      setIsTextEditing(true);
+                      return;
+                    }
+
+                    handleOverlayMouseDown(e, overlay.id);
+                    return;
+                  }
+                  if (overlay.type === 'pen') {
+                    if (activeOverlay === overlay.id && isDrawing) {
+                      e.stopPropagation();
+                      return;
+                    }
+                    if (activeOverlay !== overlay.id) {
+                      setActiveOverlay(overlay.id);
+                      setIsDrawing(true);
+                      return;
+                    }
+                    handleOverlayMouseDown(e, overlay.id);
                     return;
                   }
                   handleOverlayMouseDown(e, overlay.id);
@@ -1066,16 +1198,16 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       setActiveOverlay(overlay.id);
                       setIsTextEditing(true);
                     }}
-                    onBlur={() => setIsTextEditing(false)}
                     style={{
                       fontSize: overlay.fontSize,
                       fontFamily: overlay.fontFamily,
                       color: overlay.color,
                       width: '100%',
-                      height: '100%',
-                      overflow: 'auto',
+                      minHeight: '100%',
+                      overflow: 'visible',
                       wordBreak: 'break-word',
                       whiteSpace: 'pre-wrap',
+                      boxSizing: 'border-box',
                       padding: 4,
                       border: 'none',
                       background: 'transparent',
@@ -1085,6 +1217,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                       textAlign: overlay.textAlign,
                       fontWeight: overlay.bold ? 'bold' : 'normal',
                       fontStyle: overlay.italic ? 'italic' : 'normal',
+                      pointerEvents: activeOverlay === overlay.id && !isTextEditing ? 'none' : 'auto',
                     }}
                   />
                 ) : (
@@ -1108,13 +1241,16 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                         height={200}
                       />
                     ) : (
-                      <span className="text-xs text-slate-400 text-center px-1">No image</span>
+                      <span className="text-xs text-slate-400 text-center px-1">{t('noImage')}</span>
                     )}
                   </div>
                 )}
                 {overlay.type === 'pen' && (
                   <canvas
-                    ref={drawingCanvasRef}
+                    ref={(el) => {
+                      if (el) canvasMapRef.current.set(overlay.id, el);
+                      else canvasMapRef.current.delete(overlay.id);
+                    }}
                     className="absolute inset-0 w-full h-full"
                     width={overlay.initialCanvasWidth || overlay.width}
                     height={overlay.initialCanvasHeight || overlay.height}
