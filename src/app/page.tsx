@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  redirect('/w/playground?contribute=1');
+  redirect('/w/playground');
 }

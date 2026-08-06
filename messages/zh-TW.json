@@ -75,13 +75,13 @@
     "createBoard": "建立看板",
     "backHome": "← 返回首頁",
     "wallReady": "你的牆已就緒！",
-    "saveLinkMessage": "請儲存下方的連結。管理你的牆時會需要用到。",
-    "editLinkLabel": "編輯連結",
+    "saveLinkMessage": "這是你的個人編輯連結。請儲存它——你需要它來從任何裝置或瀏覽器編輯你的牆。",
+    "editLinkLabel": "你的編輯連結",
     "copy": "複製",
     "copied": "已複製！",
     "copyFailed": "複製失敗 — 請手動選擇連結",
     "copyManualError": "無法複製。請手動選擇上方的連結進行複製。",
-    "linkWarning": "⚠️ 此連結是你管理此牆的唯一方式。如果切換瀏覽器或清除資料，你將失去編輯權限。",
+    "linkWarning": "任何擁有此連結的人都可以編輯和刪除你的牆。請保持私密，不要公開分享。",
     "goToWall": "前往牆",
     "loading": "載入中...",
     "failedToCreate": "建立牆失敗",
@@ -111,7 +111,13 @@
     "deleting": "刪除中...",
     "delete": "刪除",
     "noAccessTitle": "你沒有此牆的編輯權限。如果你建立了它，請確保使用相同的瀏覽器且未清除資料。",
-    "noAccessBack": "返回牆"
+    "noAccessBack": "返回牆",
+    "editLinkTitle": "你的編輯連結",
+    "editLinkDesc": "使用此連結從任何瀏覽器以擁有者身份訪問你的牆。請儲存在安全的地方。",
+    "copyEditLink": "複製",
+    "editLinkCopied": "編輯連結已複製！",
+    "copyFailed": "複製連結失敗",
+    "editLinkWarning": "任何擁有此連結的人都可以編輯和刪除你的牆。請保持私密。"
   },
   "sharePanel": {
     "header": "分享牆",
@@ -224,7 +230,7 @@
     },
     "imageError": {
       "format": "無效的圖片格式。請使用 JPG、PNG、GIF 或 WebP。",
-      "size": "圖片過大（最大 5MB）"
+      "size": "圖片過大（最大 1MB）"
     }
   }
 }

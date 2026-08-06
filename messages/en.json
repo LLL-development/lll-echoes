@@ -75,13 +75,13 @@
     "createBoard": "Create Board",
     "backHome": "← Back Home",
     "wallReady": "Your wall is ready!",
-    "saveLinkMessage": "Save the link below. You'll need it to manage your wall.",
-    "editLinkLabel": "Edit Link",
+    "saveLinkMessage": "This is your personal edit link. Save it — you'll need it to edit your wall from any device or browser.",
+    "editLinkLabel": "Your Edit Link",
     "copy": "Copy",
     "copied": "Copied!",
     "copyFailed": "Copy failed — select the link manually",
     "copyManualError": "Could not copy. Select the link above and copy it manually.",
-    "linkWarning": "⚠️ This link is your only way to manage the wall. If you switch browsers or clear your data, you'll lose edit access.",
+    "linkWarning": "Anyone with this link can edit and delete your wall. Keep it private and don't share it publicly.",
     "goToWall": "Go to Wall",
     "loading": "Loading...",
     "failedToCreate": "Failed to create wall",
@@ -111,7 +111,13 @@
     "deleting": "Deleting...",
     "delete": "Delete",
     "noAccessTitle": "You don't have edit access to this wall. If you created it, make sure you're using the same browser and haven't cleared your data.",
-    "noAccessBack": "Back to wall"
+    "noAccessBack": "Back to wall",
+    "editLinkTitle": "Your Edit Link",
+    "editLinkDesc": "Use this link to access your wall as the owner from any browser. Save it somewhere safe.",
+    "copyEditLink": "Copy",
+    "editLinkCopied": "Edit link copied!",
+    "copyFailed": "Failed to copy link",
+    "editLinkWarning": "Anyone with this link can edit and delete your wall. Keep it private."
   },
   "sharePanel": {
     "header": "Share Wall",
@@ -224,7 +230,7 @@
     },
     "imageError": {
       "format": "Invalid image format. Please use JPG, PNG, GIF, or WebP.",
-      "size": "Image too large (max 5MB)"
+      "size": "Image too large (max 1MB)"
     }
   }
 }

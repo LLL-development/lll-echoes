@@ -75,13 +75,13 @@
     "createBoard": "보드 만들기",
     "backHome": "← 홈으로 돌아가기",
     "wallReady": "벽이 완성되었습니다!",
-    "saveLinkMessage": "아래 링크를 저장하세요. 벽을 관리하는 데 필요합니다.",
+    "saveLinkMessage": "이것은 개인 편집 링크입니다. 어떤 기기나 브라우저에서든 벽을 편집하려면 저장하세요.",
     "editLinkLabel": "편집 링크",
     "copy": "복사",
     "copied": "복사 완료!",
     "copyFailed": "복사 실패 — 링크를 수동으로 선택하세요",
     "copyManualError": "복사할 수 없습니다. 위의 링크를 선택하여 수동으로 복사하세요.",
-    "linkWarning": "⚠️ 이 링크가 벽을 관리하는 유일한 방법입니다. 브라우저를 바꾸거나 데이터를 지우면 편집 접근 권한을 잃습니다.",
+    "linkWarning": "이 링크를 가진 사람은 누구나 벽을 편집하고 삭제할 수 있습니다. 비공개로 유지하고 공개적으로 공유하지 마세요.",
     "goToWall": "벽으로 이동",
     "loading": "로딩 중...",
     "failedToCreate": "벽 만들기에 실패했습니다",
@@ -111,7 +111,13 @@
     "deleting": "삭제 중...",
     "delete": "삭제",
     "noAccessTitle": "이 벽을 편집할 권한이 없습니다. 생성하셨다면 같은 브라우저를 사용하고 데이터를 지우지 않았는지 확인하세요.",
-    "noAccessBack": "벽으로 돌아가기"
+    "noAccessBack": "벽으로 돌아가기",
+    "editLinkTitle": "편집 링크",
+    "editLinkDesc": "이 링크를 사용하여 어떤 브라우저에서든 소유자로 벽에 접근하세요. 안전한 곳에 저장하세요.",
+    "copyEditLink": "복사",
+    "editLinkCopied": "편집 링크가 복사되었습니다!",
+    "copyFailed": "링크 복사 실패",
+    "editLinkWarning": "이 링크를 가진 사람은 누구나 벽을 편집하고 삭제할 수 있습니다. 비공개로 유지하세요."
   },
   "sharePanel": {
     "header": "벽 공유",
@@ -224,7 +230,7 @@
     },
     "imageError": {
       "format": "잘못된 이미지 형식입니다. JPG, PNG, GIF, WebP를 사용하세요.",
-      "size": "이미지가 너무 큽니다 (최대 5MB)"
+      "size": "이미지가 너무 큽니다 (최대 1MB)"
     }
   }
 }

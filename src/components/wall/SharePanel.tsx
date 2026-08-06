@@ -9,6 +9,7 @@ interface SharePanelProps {
   wallTheme: string;
   wallTitle: string;
   allowContributions: boolean;
+  hasEditToken: boolean;
   onClose: () => void;
   onToggleContributions: (allowed: boolean) => void;
   notes: Array<{
@@ -25,6 +26,15 @@ interface SharePanelProps {
 }
 
 type Tab = 'link' | 'embed' | 'image';
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 function formatTimestamp(date: string | null | undefined): string {
   if (!date) return '';
@@ -46,6 +56,7 @@ export default function SharePanel({
   wallTheme,
   wallTitle,
   allowContributions,
+  hasEditToken,
   onClose,
   onToggleContributions,
   notes,
@@ -68,8 +79,7 @@ export default function SharePanel({
     ? window.location.origin
     : 'https://echoes.ai';
 
-  const contributeUrl = `${baseUrl}/w/${wallSlug}?contribute=1`;
-  const shareUrl = allowContributions ? contributeUrl : `${baseUrl}/w/${wallSlug}`;
+  const shareUrl = `${baseUrl}/w/${wallSlug}`;
 
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     try {
@@ -90,7 +100,7 @@ export default function SharePanel({
         const rotationStyle = note.rotation ? `transform: rotate(${note.rotation}deg);` : '';
         const metaHtml = (note.author_name || note.created_at) ? `
     <div style="position:absolute;bottom:2px;right:8px;text-align:right;font-size:10px;color:#5a6f8d;pointer-events:none;">
-      ${note.author_name ? `<div style="font-style:italic;line-height:1.2;">— ${note.author_name}</div>` : ''}
+      ${note.author_name ? `<div style="font-style:italic;line-height:1.2;">— ${escapeHtml(note.author_name)}</div>` : ''}
       ${note.created_at ? `<div style="line-height:1.2;">${formatTimestamp(note.created_at)}</div>` : ''}
     </div>
   ` : '';
@@ -101,7 +111,7 @@ export default function SharePanel({
           </div>`;
         }
         return `<div style="position:absolute;left:${note.x}px;top:${note.y}px;width:${note.width}px;height:${note.height}px;${rotationStyle};background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;padding:16px">
-          <div style="font-size:12px;color:#94a3b8">${note.author_name ? `— ${note.author_name}` : 'Empty note'}</div>
+          <div style="font-size:12px;color:#94a3b8">${note.author_name ? `— ${escapeHtml(note.author_name)}` : 'Empty note'}</div>
           ${metaHtml}
         </div>`;
       }).join('');
@@ -143,8 +153,10 @@ export default function SharePanel({
   }, [notes, wallTheme, wallTitle]);
 
   const aspectRatio = (embedHeight / embedWidth * 100).toFixed(2);
-  const embedUrl = embedContributions ? contributeUrl : `${baseUrl}/w/${wallSlug}`;
-  const previewEmbedUrl = `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}embed=1`;
+  const embedUrl = `${baseUrl}/w/${wallSlug}`;
+  const embedParams = new URLSearchParams({ embed: '1' });
+  embedParams.set('allow_contributions', embedContributions ? '1' : '0');
+  const previewEmbedUrl = `${embedUrl}?${embedParams.toString()}`;
   const embedCode = `<div style="position: relative; width: 100%; padding-bottom: ${aspectRatio}%;">
   <iframe 
     src="${embedUrl}" 
@@ -198,23 +210,25 @@ export default function SharePanel({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div
-            className="mb-4 rounded-lg px-3 py-2 text-xs"
-            style={{
-              backgroundColor: '#f5f0e8',
-              border: '1px solid #c4a77d',
-              color: '#775537',
-            }}
-            >
-              {t('customizeHint')}
-            <a
-              href={`/w/${wallSlug}/settings`}
-              className="ml-1 underline hover:opacity-70"
-              style={{ color: '#775537', fontWeight: 600 }}
-            >
-              {t('editTitlePreview')}
-            </a>
-          </div>
+          {hasEditToken && (
+            <div
+              className="mb-4 rounded-lg px-3 py-2 text-xs"
+              style={{
+                backgroundColor: '#f5f0e8',
+                border: '1px solid #c4a77d',
+                color: '#775537',
+              }}
+              >
+                {t('customizeHint')}
+              <a
+                href={`/w/${wallSlug}/settings`}
+                className="ml-1 underline hover:opacity-70"
+                style={{ color: '#775537', fontWeight: 600 }}
+              >
+                {t('editTitlePreview')}
+              </a>
+            </div>
+          )}
           {activeTab === 'link' && (
             <div className="space-y-4">
               <div>
@@ -327,6 +341,7 @@ export default function SharePanel({
                   style={{ width: '100%', paddingBottom: `${aspectRatio}%` }}
                 >
                   <iframe
+                    key={previewEmbedUrl}
                     src={previewEmbedUrl}
                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
                     title={t('embedPreview')}
