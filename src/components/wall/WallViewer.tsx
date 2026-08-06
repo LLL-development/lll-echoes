@@ -129,14 +129,20 @@ export default function WallViewer({
     };
   }, []);
 
-  // Read ?contribute=1 from URL on mount
+  // Read ?edit_token from URL on mount — save to localStorage, grant owner access, clean URL
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('contribute') === '1') {
-      setAllowContributions(true);
+    const editToken = params.get('edit_token');
+    if (editToken) {
+      localStorage.setItem(`echoes_edit_token_${wall.slug}`, editToken);
+      setHasEditToken(true);
+      params.delete('edit_token');
+      const remaining = params.toString();
+      const cleanUrl = `${window.location.pathname}${remaining ? '?' + remaining : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', cleanUrl);
     }
-  }, []);
+  }, [wall.slug]);
 
   // Detect embed and read ?bg= URL param
   useEffect(() => {
@@ -151,6 +157,11 @@ export default function WallViewer({
       const bg = params.get('bg');
       if (bg && /^#[0-9a-fA-F]{6}$/.test(bg)) {
         setBgColorOverride(bg);
+      }
+      const ac = params.get('allow_contributions');
+      const isEmbed = params.get('embed') === '1';
+      if (ac !== null && isEmbed) {
+        setAllowContributions(ac === '1');
       }
     }
   }, []);
@@ -574,16 +585,6 @@ export default function WallViewer({
     } catch {
       // Failed to persist
     }
-
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (allowed) {
-        url.searchParams.set('contribute', '1');
-      } else {
-        url.searchParams.delete('contribute');
-      }
-      window.history.replaceState({}, '', url.toString());
-    }
   }, [isPlayground, wall.slug]);
 
   const templateNames = templates.length > 0
@@ -667,43 +668,45 @@ export default function WallViewer({
               <div className="flex items-center gap-2 md:gap-4">
                 <LocaleSwitcher />
                 {hasEditToken && (
-                  <Link
-                    href={`/w/${wall.slug}/settings`}
-                    className="text-sm font-medium hover:opacity-70"
-                    style={{ color: '#775537' }}
+                  <>
+                    <Link
+                      href={`/w/${wall.slug}/settings`}
+                      className="text-sm font-medium hover:opacity-70"
+                      style={{ color: '#775537' }}
+                      >
+                      {t('nav.settings')}
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(t('confirm.deleteWall'))) return;
+                        try {
+                          const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
+                          if (!token) {
+              showToast(t('toast.noEditAccess'), 'error');
+                            return;
+                          }
+                          const res = await fetch(`/api/walls/${wall.slug}`, {
+                            method: 'DELETE',
+                            headers: { 'X-Edit-Token': token },
+                          });
+                          if (res.ok) {
+                            showToast(t('toast.wallDeleted'), 'success');
+                            router.push('/');
+                          } else {
+                            const data = await res.json();
+                            showToast(data.error || t('toast.deleteWallFailed'), 'error');
+                          }
+                        } catch {
+                          showToast(t('toast.deleteWallFailed'), 'error');
+                        }
+                      }}
+                      className="text-sm font-medium hover:opacity-70"
+                      style={{ color: '#dc2626' }}
                     >
-                    {t('nav.settings')}
-                  </Link>
+                      {t('nav.deleteWall')}
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={async () => {
-                    if (!window.confirm(t('confirm.deleteWall'))) return;
-                    try {
-                      const token = typeof window !== 'undefined' ? localStorage.getItem(`echoes_edit_token_${wall.slug}`) : '';
-                      if (!token) {
-            showToast(t('toast.noEditAccess'), 'error');
-                        return;
-                      }
-                      const res = await fetch(`/api/walls/${wall.slug}`, {
-                        method: 'DELETE',
-                        headers: { 'X-Edit-Token': token },
-                      });
-                      if (res.ok) {
-                        showToast(t('toast.wallDeleted'), 'success');
-                        router.push('/');
-                      } else {
-                        const data = await res.json();
-                        showToast(data.error || t('toast.deleteWallFailed'), 'error');
-                      }
-                    } catch {
-                      showToast(t('toast.deleteWallFailed'), 'error');
-                    }
-                  }}
-                  className="text-sm font-medium hover:opacity-70"
-                  style={{ color: '#dc2626' }}
-                >
-                  {t('nav.deleteWall')}
-                </button>
               </div>
             )}
           </div>
@@ -754,26 +757,28 @@ export default function WallViewer({
                       )}
                     </button>
                   )}
-                  <button
-                    disabled={isPlayground}
-                    onClick={() => {
-                      if (!isPlayground) setSharePanelOpen(true);
-                    }}
-                    className="rounded-lg p-2 text-white"
-                    style={{
-                      backgroundColor: '#775537',
-                      boxShadow: isPlayground
-                        ? '0 3px 0 #5a3f2a'
-                        : '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
-                      opacity: isPlayground ? 0.45 : 1,
-                      cursor: isPlayground ? 'not-allowed' : 'pointer',
-                    }}
-                    title={isPlayground ? t('share.playgroundButton') : t('share.button')}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                  </button>
+                  {hasEditToken && (
+                    <button
+                      disabled={isPlayground}
+                      onClick={() => {
+                        if (!isPlayground) setSharePanelOpen(true);
+                      }}
+                      className="rounded-lg p-2 text-white"
+                      style={{
+                        backgroundColor: '#775537',
+                        boxShadow: isPlayground
+                          ? '0 3px 0 #5a3f2a'
+                          : '0 3px 0 #5a3f2a, 0 4px 8px rgba(119,85,55,0.2)',
+                        opacity: isPlayground ? 0.45 : 1,
+                        cursor: isPlayground ? 'not-allowed' : 'pointer',
+                      }}
+                      title={isPlayground ? t('share.playgroundButton') : t('share.button')}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -802,7 +807,7 @@ export default function WallViewer({
                     <p className="text-lg text-slate-400">
                       {t('canvas.empty')}
                     </p>
-                    {!isPlayground && (
+                    {!isPlayground && (hasEditToken || allowContributions) && (
                       <button
                         onClick={() => setSidePanelOpen(true)}
                         className="mt-4 inline-block rounded-lg px-4 py-2 text-sm font-medium select-none transition-all duration-150"
@@ -1021,23 +1026,25 @@ export default function WallViewer({
                     </span>
                   </button>
                 )}
-                <button
-                  disabled={isPlayground}
-                  onClick={() => {
-                    if (!isPlayground) setSharePanelOpen(true);
-                  }}
-                  className="rounded-lg px-4 py-2.5 text-white flex items-center gap-2"
-                  style={{
-                    backgroundColor: '#775537',
-                    opacity: isPlayground ? 0.45 : 1,
-                    cursor: isPlayground ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                  <span className="text-sm font-medium">{t('share.button')}</span>
-                </button>
+                {hasEditToken && (
+                  <button
+                    disabled={isPlayground}
+                    onClick={() => {
+                      if (!isPlayground) setSharePanelOpen(true);
+                    }}
+                    className="rounded-lg px-4 py-2.5 text-white flex items-center gap-2"
+                    style={{
+                      backgroundColor: '#775537',
+                      opacity: isPlayground ? 0.45 : 1,
+                      cursor: isPlayground ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                    </svg>
+                    <span className="text-sm font-medium">{t('share.button')}</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -1087,7 +1094,7 @@ export default function WallViewer({
         </div>
 
         {/* Side panel toggle button - only show when in contribute mode */}
-        {allowContributions && (
+        {((!isEmbedded && hasEditToken) || allowContributions) && (
           <button
             onClick={() => setSidePanelOpen(!sidePanelOpen)}
             className={`fixed right-0 top-1/2 -translate-y-1/2 z-40 rounded-l-lg text-white shadow-lg ${
@@ -1187,6 +1194,7 @@ export default function WallViewer({
           onClose={() => setSharePanelOpen(false)}
           onToggleContributions={handleToggleContributions}
           notes={notes}
+          hasEditToken={hasEditToken}
         />
       )}
 

@@ -75,13 +75,13 @@
     "createBoard": "Bina Papan",
     "backHome": "← Kembali ke Home",
     "wallReady": "Dinding anda sedia!",
-    "saveLinkMessage": "Simpan pautan di bawah. Anda perlukannya untuk mengurus dinding anda.",
-    "editLinkLabel": "Pautan Sunting",
+    "saveLinkMessage": "Ini ialah pautan edit peribadi anda. Simpannya — anda memerlukannya untuk mengedit dinding anda dari mana-mana peranti atau pelayar.",
+    "editLinkLabel": "Pautan Edit Anda",
     "copy": "Salin",
     "copied": "Disalin!",
     "copyFailed": "Gagal menyalin — pilih pautan secara manual",
     "copyManualError": "Tidak dapat menyalin. Pilih pautan di atas dan salin secara manual.",
-    "linkWarning": "⚠️ Pautan ini satu-satunya cara untuk mengurus dinding. Jika anda tukar pelayan atau padam data, anda akan kehilangan akses suntingan.",
+    "linkWarning": "Sesiapa yang mempunyai pautan ini boleh mengedit dan memadam dinding anda. Simpan secara peribadi dan jangan kongsi secara terbuka.",
     "goToWall": "Pergi ke Dinding",
     "loading": "Memuatkan...",
     "failedToCreate": "Gagal mencipta dinding",
@@ -111,7 +111,13 @@
     "deleting": "Memadam...",
     "delete": "Padam",
     "noAccessTitle": "Anda tidak mempunyai akses suntingan ke dinding ini. Jika anda menciptanya, pastikan anda menggunakan pelayan yang sama dan tidak memadam data anda.",
-    "noAccessBack": "Kembali ke dinding"
+    "noAccessBack": "Kembali ke dinding",
+    "editLinkTitle": "Pautan Edit Anda",
+    "editLinkDesc": "Gunakan pautan ini untuk mengakses dinding anda sebagai pemilik dari mana-mana pelayar. Simpan di tempat yang selamat.",
+    "copyEditLink": "Salin",
+    "editLinkCopied": "Pautan edit disalin!",
+    "copyFailed": "Gagal menyalin pautan",
+    "editLinkWarning": "Sesiapa yang mempunyai pautan ini boleh mengedit dan memadam dinding anda. Simpan secara peribadi."
   },
   "sharePanel": {
     "header": "Kongsi Dinding",
@@ -224,7 +230,7 @@
     },
     "imageError": {
       "format": "Format imej tidak sah. Sila gunakan JPG, PNG, GIF, atau WebP.",
-      "size": "Imej terlalu besar (maks 5MB)"
+      "size": "Imej terlalu besar (maks 1MB)"
     }
   }
 }

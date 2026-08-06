@@ -304,6 +304,84 @@ export default function WallSettingsPage({ params }: { params: Promise<{ slug: s
             </button>
           </div>
         </form>
+
+        {/* Copy Edit Link Section */}
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #c4a77d' }}>
+          <h2
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: '#775537',
+              marginBottom: 12,
+              fontFamily: "'Patrick Hand', cursive",
+            }}
+          >
+            {t('settings.editLinkTitle')}
+          </h2>
+          <p style={{ fontSize: 14, color: '#775537', opacity: 0.7, marginBottom: 16 }}>
+            {t('settings.editLinkDesc')}
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              readOnly
+              value={typeof window !== 'undefined' ? `${window.location.origin}/w/${slug}?edit_token=${localStorage.getItem(`echoes_edit_token_${slug}`) || ''}` : ''}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                fontSize: 14,
+                fontFamily: 'monospace',
+                border: '1px solid #c4a77d',
+                borderRadius: 8,
+                backgroundColor: '#f5f0e8',
+                color: '#775537',
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem(`echoes_edit_token_${slug}`);
+                  if (!token) return;
+                  await navigator.clipboard.writeText(
+                    `${window.location.origin}/w/${slug}?edit_token=${token}`
+                  );
+                  showToast(t('settings.editLinkCopied'), 'success');
+                } catch {
+                  showToast(t('settings.copyFailed'), 'error');
+                }
+              }}
+              style={{
+                padding: '10px 20px',
+                fontSize: 16,
+                fontFamily: "'Patrick Hand', cursive",
+                backgroundColor: '#775537',
+                color: '#FBE29D',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t('settings.copyEditLink')}
+            </button>
+          </div>
+          <div
+            style={{
+              marginTop: 12,
+              padding: '8px 12px',
+              backgroundColor: '#FFF5F5',
+              border: '1px solid #FCA5A5',
+              borderRadius: 8,
+            }}
+          >
+            <p style={{ fontSize: 12, color: '#991B1B', margin: 0 }}>
+              {t('settings.editLinkWarning')}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

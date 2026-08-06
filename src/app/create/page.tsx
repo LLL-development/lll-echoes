@@ -92,7 +92,7 @@ export default function CreateWallPage() {
                 <input
                   type="text"
                   readOnly
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/w/${createdWall.slug}`}
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/w/${createdWall.slug}?edit_token=${createdWall.editToken}`}
                   className="flex-1 rounded-lg border px-3 py-2 text-sm bg-slate-50"
                   style={{ borderColor: '#c4a77d', color: '#775537' }}
                 />
@@ -104,7 +104,7 @@ export default function CreateWallPage() {
                         throw new Error('Clipboard unavailable');
                       }
                       await navigator.clipboard.writeText(
-                        `${window.location.origin}/w/${createdWall.slug}`
+                        `${window.location.origin}/w/${createdWall.slug}?edit_token=${createdWall.editToken}`
                       );
                       setCopied(true);
                       setTimeout(() => setCopied(false), 2000);

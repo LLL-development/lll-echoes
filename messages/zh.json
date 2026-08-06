@@ -75,13 +75,13 @@
     "createBoard": "创建看板",
     "backHome": "← 返回首页",
     "wallReady": "你的墙已就绪！",
-    "saveLinkMessage": "保存下面的链接。管理你的墙时需要用到。",
-    "editLinkLabel": "编辑链接",
+    "saveLinkMessage": "这是你的个人编辑链接。请保存它——你需要它来从任何设备或浏览器编辑你的墙。",
+    "editLinkLabel": "你的编辑链接",
     "copy": "复制",
     "copied": "已复制！",
     "copyFailed": "复制失败 — 请手动选择链接",
     "copyManualError": "无法复制。请手动选择上面的链接进行复制。",
-    "linkWarning": "⚠️ 此链接是你管理此墙的唯一方式。如果切换浏览器或清除数据，你将失去编辑权限。",
+    "linkWarning": "任何拥有此链接的人都可以编辑和删除你的墙。请保持私密，不要公开分享。",
     "goToWall": "前往墙",
     "loading": "加载中...",
     "failedToCreate": "创建墙失败",
@@ -111,7 +111,13 @@
     "deleting": "删除中...",
     "delete": "删除",
     "noAccessTitle": "你没有此墙的编辑权限。如果你创建了它，请确保使用相同的浏览器且未清除数据。",
-    "noAccessBack": "返回墙"
+    "noAccessBack": "返回墙",
+    "editLinkTitle": "你的编辑链接",
+    "editLinkDesc": "使用此链接从任何浏览器以所有者身份访问你的墙。请保存在安全的地方。",
+    "copyEditLink": "复制",
+    "editLinkCopied": "编辑链接已复制！",
+    "copyFailed": "复制链接失败",
+    "editLinkWarning": "任何拥有此链接的人都可以编辑和删除你的墙。请保持私密。"
   },
   "sharePanel": {
     "header": "分享墙",
@@ -224,7 +230,7 @@
     },
     "imageError": {
       "format": "无效的图片格式。请使用 JPG、PNG、GIF 或 WebP。",
-      "size": "图片过大（最大 5MB）"
+      "size": "图片过大（最大 1MB）"
     }
   }
 }

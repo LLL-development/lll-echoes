@@ -604,11 +604,11 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
           textEl.style.fontFamily = overlay.fontFamily;
           textEl.style.color = overlay.color;
           textEl.style.width = '100%';
-          textEl.style.height = '100%';
-          textEl.style.overflow = 'auto';
+          textEl.style.minHeight = '100%';
+          textEl.style.overflow = 'visible';
           textEl.style.wordBreak = 'break-word';
           textEl.style.whiteSpace = 'pre-wrap';
-          textEl.style.padding = '4px';
+          textEl.style.padding = Math.round(4 * scaleX) + 'px';
           textEl.style.textAlign = overlay.textAlign || 'left';
           textEl.style.fontWeight = overlay.bold ? 'bold' : 'normal';
           textEl.style.fontStyle = overlay.italic ? 'italic' : 'normal';
