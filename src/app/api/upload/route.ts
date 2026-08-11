@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadImage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { createHash } from 'crypto';
+
+export const runtime = 'edge';
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/webp', 'image/png', 'image/jpeg', 'image/jpg'];
@@ -41,7 +42,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Wall not found' }, { status: 404 });
   }
 
-  const tokenHash = createHash('sha256').update(editToken).digest('hex');
+  const tokenHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(editToken))
+  .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
   if (tokenHash !== wall.edit_token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

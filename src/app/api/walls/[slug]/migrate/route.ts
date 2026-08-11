@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { randomUUID, createHash } from 'crypto';
+
+export const runtime = 'edge';
 
 export async function POST(
   request: NextRequest,
@@ -28,9 +29,9 @@ export async function POST(
 
   // Create a new permanent wall (empty — playground notes are cleaned up
   // via a separate beacon when the client navigates away).
-  const newSlug = randomUUID().substring(0, 8);
-  const newEditToken = randomUUID();
-  const newEditTokenHash = createHash('sha256').update(newEditToken).digest('hex');
+  const newSlug = crypto.randomUUID().substring(0, 8);
+  const newEditToken = crypto.randomUUID();
+  const newEditTokenHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(newEditToken)).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
 
   const { data: newWall, error: wallError } = await supabase
     .from('walls')

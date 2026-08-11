@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { verifyEditToken, isValidUrl, isValidAuthorName, isValidPosition, isValidDimension, isValidRotation } from '@/lib/validation';
 
+export const runtime = 'edge';
+
 const MAX_NOTES_PER_WALL = Number(process.env.ECHOES_MAX_NOTES_PER_WALL ?? 200);
 const NOTES_PER_HOUR_LIMIT = Number(process.env.ECHOES_NOTES_PER_HOUR_LIMIT ?? 50);
 

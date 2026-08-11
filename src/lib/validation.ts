@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import type { NextRequest } from 'next/server';
 
 // ── Value validators ────────────────────────────────────────────────
@@ -55,7 +54,7 @@ export async function verifyEditToken(
     return { wall: null, error: 'Wall not found' };
   }
 
-  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const tokenHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
   if (tokenHash !== wall.edit_token) {
     return { wall: null, error: 'Unauthorized' };
   }
