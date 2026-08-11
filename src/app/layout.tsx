@@ -3,6 +3,10 @@ import { ToastProvider } from '@/components/toast/ToastProvider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
+// Cloudflare's legacy next-on-pages adapter requires generated routes such as
+// /_not-found to inherit the Edge runtime from their nearest layout.
+export const runtime = 'edge';
+
 export const metadata = {
   icons: {
     icon: '/favicon.webp',
