@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 import { useEffect, useState, FormEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/toast/ToastProvider';

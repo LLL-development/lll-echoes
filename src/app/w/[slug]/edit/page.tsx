@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+export const runtime = 'edge';
 
-export default function EditRedirect() {
-  redirect('/w/playground');
+export default function EditPage() {
+  return null;
 }

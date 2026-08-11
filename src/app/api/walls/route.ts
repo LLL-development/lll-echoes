@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { supabase } from '@/lib/supabase';
-import { createHash } from 'crypto';
 import { getClientIp } from '@/lib/validation';
+
+export const runtime = 'edge';
 
 // Coarse flood guard: counts ALL walls created globally in the last hour.
 // Not per-IP (that would require a new table), but sufficient to throttle
@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const slug = randomUUID().substring(0, 8);
-    const editToken = randomUUID();
-    const editTokenHash = createHash('sha256').update(editToken).digest('hex');
+    const slug = crypto.randomUUID().substring(0, 8);
+    const editToken = crypto.randomUUID();
+    const editTokenHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(editToken)).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
 
     const { data: wall, error } = await supabase
       .from('walls')

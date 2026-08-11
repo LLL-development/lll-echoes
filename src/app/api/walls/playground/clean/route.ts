@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const runtime = 'edge';
+
 const SESSION_ID_RE = /^[a-zA-Z0-9_-]+$/;
 
 export async function DELETE(request: NextRequest) {

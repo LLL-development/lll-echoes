@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+export const runtime = 'edge';
 import PlaygroundPageClient from './PlaygroundPageClient';
 
 export const dynamic = 'force-dynamic';
