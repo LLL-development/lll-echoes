@@ -19,7 +19,7 @@ jobs:
           node-version: 22
       - run: npm ci
       - name: Build
-        run: npm run build
+        run: npm run cf:build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -28,4 +28,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy . --project-name lll-echoes --branch=${{ github.ref_name }}
+          command: pages deploy .vercel/output/static --project-name lll-echoes --branch=${{ github.ref_name }}
