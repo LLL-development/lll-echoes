@@ -1,21 +1,9 @@
 import { notFound } from 'next/navigation';
 export const runtime = 'edge';
 import PlaygroundPageClient from './PlaygroundPageClient';
+import { getWallData } from '@/lib/walls';
 
 export const dynamic = 'force-dynamic';
-
-async function fetchWall(slug: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3500'}/api/walls/${slug}`,
-    { headers: { 'Cache-Control': 'no-cache' } }
-  );
-
-  if (!res.ok) {
-    return null;
-  }
-
-  return res.json();
-}
 
 export async function generateMetadata() {
   return {
@@ -30,7 +18,7 @@ export async function generateMetadata() {
 }
 
 export default async function PlaygroundPage() {
-  const data = await fetchWall('playground');
+  const data = await getWallData('playground');
 
   if (!data?.wall) {
     notFound();

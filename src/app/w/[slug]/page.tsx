@@ -1,25 +1,13 @@
 import { notFound } from 'next/navigation';
 export const runtime = 'edge';
 import WallPageClient from './WallPageClient';
+import { getWallData } from '@/lib/walls';
 
 export const dynamic = 'force-dynamic';
 
-async function fetchWall(slug: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3500'}/api/walls/${slug}`,
-    { headers: { 'Cache-Control': 'no-cache' }, cache: 'no-store' }
-  );
-
-  if (!res.ok) {
-    return null;
-  }
-
-  return res.json();
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const data = await fetchWall(slug);
+  const data = await getWallData(slug);
   const wall = data?.wall;
 
   const title = wall?.title || wall?.theme || 'Untitled Wall';
@@ -42,7 +30,7 @@ export default async function WallPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const data = await fetchWall(slug);
+  const data = await getWallData(slug);
 
   if (!data?.wall) {
     notFound();
