@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useToast } from '@/components/toast/ToastProvider';
 import { useTranslations } from 'next-intl';
 
 const DISMISS_KEY = 'echoes_playground_info_dismissed';
@@ -11,9 +10,7 @@ export default function PlaygroundInfoCard() {
   const t = useTranslations();
   const [dismissed, setDismissed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const { showToast } = useToast();
 
-  // Hydrate dismissal state from localStorage after mount
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === 'true');
     setHydrated(true);
@@ -24,26 +21,14 @@ export default function PlaygroundInfoCard() {
     setDismissed(true);
   };
 
-  // Don't render anything until hydration is complete (prevents flash)
   if (!hydrated || dismissed) return null;
 
   return (
     <div
       style={{
-        position: 'fixed',
-        top: 16,
-        left: 16,
-        right: 16,
-        width: 'auto',
-        maxWidth: 320,
-        padding: 16,
-        backgroundColor: '#eff6ff',
-        border: '1px solid #93c5fd',
-        borderRadius: 8,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        zIndex: 50,
-        color: '#1e40af',
-        fontSize: 14,
+        position: 'fixed', top: 16, left: 16, right: 16, width: 'auto', maxWidth: 320,
+        padding: 16, backgroundColor: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 8,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 50, color: '#1e40af', fontSize: 14,
         fontFamily: "'Patrick Hand', cursive",
       }}
     >
@@ -53,13 +38,8 @@ export default function PlaygroundInfoCard() {
           onClick={handleDismiss}
           aria-label={t('playgroundInfo.dismiss')}
           style={{
-            background: 'transparent',
-            border: 'none',
-            fontSize: 20,
-            cursor: 'pointer',
-            color: '#1e40af',
-            padding: '0 0 0 8px',
-            lineHeight: 1,
+            background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: '#1e40af',
+            padding: '0 0 0 8px', lineHeight: 1,
           }}
         >
           ×
@@ -68,41 +48,16 @@ export default function PlaygroundInfoCard() {
       <p style={{ marginTop: 8, marginBottom: 12, lineHeight: 1.4 }}>
         {t('playgroundInfo.description')}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <Link
-          href="/create"
-          style={{
-            display: 'block',
-            padding: '8px 12px',
-            backgroundColor: '#1e40af',
-            color: '#ffffff',
-            borderRadius: 6,
-            textDecoration: 'none',
-            textAlign: 'center',
-            fontWeight: 600,
-            transition: 'background-color 0.1s ease',
-          }}
-        >
-          {t('playgroundInfo.createPermanent')}
-        </Link>
-        <button
-          onClick={() => {
-            // Migration UI — fires a custom DOM event the parent listens for
-            window.dispatchEvent(new CustomEvent('echoes:migrate-playground'));
-          }}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: 'transparent',
-            border: '1px solid #1e40af',
-            color: '#1e40af',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          {t('playgroundInfo.keepNotes')}
-        </button>
-      </div>
+      <Link
+        href="/create"
+        style={{
+          display: 'block', padding: '8px 12px', backgroundColor: '#1e40af', color: '#ffffff',
+          borderRadius: 6, textDecoration: 'none', textAlign: 'center', fontWeight: 600,
+          transition: 'background-color 0.1s ease',
+        }}
+      >
+        {t('playgroundInfo.createPermanent')}
+      </Link>
     </div>
   );
 }
