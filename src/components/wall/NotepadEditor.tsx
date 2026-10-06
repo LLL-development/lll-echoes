@@ -95,7 +95,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
         type: 'text',
         x: 20,
         y: 20,
-        width: 150,
+        width: 300,
         height: 40,
         content: t('placeholder.typeHere'),
         fontSize: 16,
@@ -605,7 +605,7 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
           textEl.style.color = overlay.color;
           textEl.style.width = '100%';
           textEl.style.minHeight = '100%';
-          textEl.style.overflow = 'visible';
+          textEl.style.overflow = 'hidden';
           textEl.style.wordBreak = 'break-word';
           textEl.style.whiteSpace = 'pre-wrap';
           textEl.style.padding = Math.round(4 * scaleX) + 'px';
@@ -713,21 +713,264 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative flex max-h-[calc(100dvh-2rem)] flex-col md:max-h-none md:flex-row md:max-w-4xl gap-6 rounded-2xl bg-white p-4 md:p-6 shadow-2xl mx-4">
+      <div className="relative flex max-h-[90vh] flex-col md:max-w-5xl gap-4 rounded-2xl bg-white p-4 md:p-6 shadow-2xl mx-4">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-20"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
+        {/* Preview area */}
+        <div className="flex-shrink-0 overflow-auto">
+          <div
+            ref={previewRef}
+            className="relative inline-block"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setActiveOverlay(null);
+                setIsTextEditing(false);
+                setIsDrawing(false);
+              }
+            }}
+          >
+            <Image
+              src={imageUrl}
+              alt={t('notepad')}
+              className="block max-h-[min(500px,40vh)] max-w-full object-contain"
+              draggable={false}
+              width={500}
+              height={500}
+              style={{ pointerEvents: 'none' }}
+            />
+            {overlays.map((overlay) => (
+              <div
+                key={overlay.id}
+                className={`absolute ${activeOverlay === overlay.id ? 'ring-2 ring-blue-500' : ''}`}
+                style={{
+                  left: overlay.x,
+                  top: overlay.y,
+                  width: overlay.width,
+                  height: overlay.height,
+                  cursor: textMode === 'move' && activeOverlay === overlay.id ? 'move' : 'default',
+                  zIndex: activeOverlay === overlay.id ? 10 : 1,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const target = e.target as Element;
+                  const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
+                  if (isTextarea && textMode === 'edit') {
+                    return; // Let textarea handle its own click in edit mode
+                  }
+                  handleOverlayClick(overlay.id);
+                }}
+                onMouseDown={(e) => {
+                  if (overlay.type === 'text') {
+                    const target = e.target as Element;
+                    const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
+
+                    if (isTextarea) {
+                      if (textMode === 'move' || (activeOverlay === overlay.id && !isTextEditing)) {
+                        handleOverlayMouseDown(e, overlay.id);
+                        return;
+                      }
+                      setActiveOverlay(overlay.id);
+                      setIsTextEditing(true);
+                      return;
+                    }
+
+                    handleOverlayMouseDown(e, overlay.id);
+                    return;
+                  }
+                  if (overlay.type === 'pen') {
+                    if (activeOverlay === overlay.id && isDrawing) {
+                      e.stopPropagation();
+                      return;
+                    }
+                    if (activeOverlay !== overlay.id) {
+                      setActiveOverlay(overlay.id);
+                      setIsDrawing(true);
+                      return;
+                    }
+                    handleOverlayMouseDown(e, overlay.id);
+                    return;
+                  }
+                  handleOverlayMouseDown(e, overlay.id);
+                }}
+                onMouseMove={(e) => {
+                  if (overlay.type === 'text' || overlay.type === 'image' || overlay.type === 'pen') {
+                    handleOverlayMouseMove(e, overlay.id);
+                  }
+                }}
+                onMouseUp={(e) => {
+                  if (overlay.type === 'text' || overlay.type === 'image' || overlay.type === 'pen') {
+                    handleOverlayMouseUp(e, overlay.id);
+                  }
+                }}
+              >
+                {overlay.type === 'text' ? (
+                  <textarea
+                    ref={isTextEditing && activeOverlay === overlay.id ? textInputRef : null}
+                    value={overlay.content}
+                    onChange={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      const newHeight = target.scrollHeight;
+                      target.style.height = newHeight + 'px';
+                      const preview = previewRef.current;
+                      const maxH = preview
+                        ? Math.max(40, preview.clientHeight - overlay.y - 10)
+                        : newHeight;
+                      const clamped = Math.min(newHeight, Math.min(maxH, 200));
+                      target.style.height = clamped + 'px';
+                      updateOverlay(overlay.id, { content: e.target.value, height: clamped });
+                    }}
+                    onFocus={() => {
+                      setActiveOverlay(overlay.id);
+                      setIsTextEditing(true);
+                    }}
+                    style={{
+                      fontSize: overlay.fontSize,
+                      fontFamily: overlay.fontFamily,
+                      color: overlay.color,
+                      width: '100%',
+                      minHeight: '100%',
+                      overflow: 'auto',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      boxSizing: 'border-box',
+                      padding: 4,
+                      border: 'none',
+                      background: 'transparent',
+                      resize: 'none',
+                      outline: 'none',
+                      cursor: isTextEditing ? 'text' : 'default',
+                      textAlign: overlay.textAlign,
+                      fontWeight: overlay.bold ? 'bold' : 'normal',
+                      fontStyle: overlay.italic ? 'italic' : 'normal',
+                      pointerEvents: activeOverlay === overlay.id && textMode === 'move' ? 'none' : 'auto',
+                    }}
+                  />
+                ) : null}
+                {overlay.type === 'image' && (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {overlay.content ? (
+                      <Image
+                        src={overlay.content}
+                        alt=""
+                        className="w-full h-full object-contain rounded"
+                        draggable={false}
+                        width={200}
+                        height={200}
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400 text-center px-1">{t('noImage')}</span>
+                    )}
+                  </div>
+                )}
+                {overlay.type === 'pen' && (
+                  <canvas
+                    ref={(el) => {
+                      if (el) canvasMapRef.current.set(overlay.id, el);
+                      else canvasMapRef.current.delete(overlay.id);
+                    }}
+                    className="absolute inset-0 w-full h-full"
+                    width={overlay.initialCanvasWidth || overlay.width}
+                    height={overlay.initialCanvasHeight || overlay.height}
+                    style={{ cursor: isDrawing ? 'crosshair' : 'default', pointerEvents: 'auto' }}
+                    onMouseDown={(e) => {
+                      if (overlay.id === activeOverlay && isDrawing) {
+                        e.stopPropagation();
+                        handleDrawingMouseDown(e);
+                      }
+                    }}
+                    onMouseMove={(e) => {
+                      if (overlay.id === activeOverlay && isDrawing) {
+                        e.stopPropagation();
+                        handleDrawingMouseMove(e);
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      if (overlay.id === activeOverlay && isDrawing) {
+                        e.stopPropagation();
+                        handleDrawingMouseUp();
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (overlay.id === activeOverlay && isDrawing) {
+                        e.stopPropagation();
+                        handleDrawingMouseUp();
+                      }
+                    }}
+                  />
+                )}
+                {activeOverlay === overlay.id && (
+                  <>
+                    {/* Edge resize zones */}
+                    <div
+                      className="absolute cursor-n-resize"
+                      style={{ top: -4, left: 0, right: 0, height: 10 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'n')}
+                    />
+                    <div
+                      className="absolute cursor-s-resize"
+                      style={{ bottom: -4, left: 0, right: 0, height: 10 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 's')}
+                    />
+                    <div
+                      className="absolute cursor-w-resize"
+                      style={{ top: 0, left: -4, bottom: 0, width: 10 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'w')}
+                    />
+                    <div
+                      className="absolute cursor-e-resize"
+                      style={{ top: 0, right: -4, bottom: 0, width: 10 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'e')}
+                    />
+                    {/* Corner resize handles */}
+                    <div
+                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-nw-resize"
+                      style={{ top: -5, left: -5 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'nw')}
+                    />
+                    <div
+                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-ne-resize"
+                      style={{ top: -5, right: -5 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'ne')}
+                    />
+                    <div
+                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-sw-resize"
+                      style={{ bottom: -5, left: -5 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'sw')}
+                    />
+                    <div
+                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-se-resize"
+                      style={{ bottom: -5, right: -5 }}
+                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'se')}
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Editor controls */}
-        <div className="flex w-full flex-col gap-2 md:w-56 md:shrink-0 md:gap-4">
+        <div className="flex min-h-0 flex-1 w-full flex-col gap-3 overflow-y-auto border-t border-slate-200 pt-3">
           <h3 className="text-sm font-semibold text-slate-700">{themeName}</h3>
-          <div className="flex flex-row gap-2 md:flex-col">
+          <div className="flex flex-row gap-2">
             <button
               onClick={addText}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -1109,226 +1352,6 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                 </>
               ) : t('saveToWall')}
             </button>
-          </div>
-        </div>
-
-        {/* Preview area */}
-        <div className="flex-1 overflow-auto">
-          <div
-            ref={previewRef}
-            className="relative inline-block"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setActiveOverlay(null);
-                setIsTextEditing(false);
-                setIsDrawing(false);
-              }
-            }}
-          >
-            <Image
-              src={imageUrl}
-              alt={t('notepad')}
-              className="block max-h-[500px] max-w-full object-contain"
-              draggable={false}
-              width={500}
-              height={500}
-              style={{ pointerEvents: 'none' }}
-            />
-            {overlays.map((overlay) => (
-              <div
-                key={overlay.id}
-                className={`absolute ${activeOverlay === overlay.id ? 'ring-2 ring-blue-500' : ''}`}
-                style={{
-                  left: overlay.x,
-                  top: overlay.y,
-                  width: overlay.width,
-                  height: overlay.height,
-                  cursor: textMode === 'move' && activeOverlay === overlay.id ? 'move' : 'default',
-                  zIndex: activeOverlay === overlay.id ? 10 : 1,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const target = e.target as Element;
-                  const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
-                  if (isTextarea && textMode === 'edit') {
-                    return; // Let textarea handle its own click in edit mode
-                  }
-                  handleOverlayClick(overlay.id);
-                }}
-                onMouseDown={(e) => {
-                  if (overlay.type === 'text') {
-                    const target = e.target as Element;
-                    const isTextarea = target instanceof HTMLTextAreaElement || target.tagName === 'TEXTAREA';
-
-                    if (isTextarea) {
-                      if (activeOverlay === overlay.id && !isTextEditing) {
-                        handleOverlayMouseDown(e, overlay.id);
-                        return;
-                      }
-                      setActiveOverlay(overlay.id);
-                      setIsTextEditing(true);
-                      return;
-                    }
-
-                    handleOverlayMouseDown(e, overlay.id);
-                    return;
-                  }
-                  if (overlay.type === 'pen') {
-                    if (activeOverlay === overlay.id && isDrawing) {
-                      e.stopPropagation();
-                      return;
-                    }
-                    if (activeOverlay !== overlay.id) {
-                      setActiveOverlay(overlay.id);
-                      setIsDrawing(true);
-                      return;
-                    }
-                    handleOverlayMouseDown(e, overlay.id);
-                    return;
-                  }
-                  handleOverlayMouseDown(e, overlay.id);
-                }}
-              >
-                {overlay.type === 'text' ? (
-                  <textarea
-                    ref={isTextEditing && activeOverlay === overlay.id ? textInputRef : null}
-                    value={overlay.content}
-                    onChange={(e) => updateOverlay(overlay.id, { content: e.target.value })}
-                    onFocus={() => {
-                      setActiveOverlay(overlay.id);
-                      setIsTextEditing(true);
-                    }}
-                    style={{
-                      fontSize: overlay.fontSize,
-                      fontFamily: overlay.fontFamily,
-                      color: overlay.color,
-                      width: '100%',
-                      minHeight: '100%',
-                      overflow: 'visible',
-                      wordBreak: 'break-word',
-                      whiteSpace: 'pre-wrap',
-                      boxSizing: 'border-box',
-                      padding: 4,
-                      border: 'none',
-                      background: 'transparent',
-                      resize: 'none',
-                      outline: 'none',
-                      cursor: isTextEditing ? 'text' : 'default',
-                      textAlign: overlay.textAlign,
-                      fontWeight: overlay.bold ? 'bold' : 'normal',
-                      fontStyle: overlay.italic ? 'italic' : 'normal',
-                      pointerEvents: activeOverlay === overlay.id && !isTextEditing ? 'none' : 'auto',
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {overlay.content ? (
-                      <Image
-                        src={overlay.content}
-                        alt=""
-                        className="w-full h-full object-contain rounded"
-                        draggable={false}
-                        width={200}
-                        height={200}
-                      />
-                    ) : (
-                      <span className="text-xs text-slate-400 text-center px-1">{t('noImage')}</span>
-                    )}
-                  </div>
-                )}
-                {overlay.type === 'pen' && (
-                  <canvas
-                    ref={(el) => {
-                      if (el) canvasMapRef.current.set(overlay.id, el);
-                      else canvasMapRef.current.delete(overlay.id);
-                    }}
-                    className="absolute inset-0 w-full h-full"
-                    width={overlay.initialCanvasWidth || overlay.width}
-                    height={overlay.initialCanvasHeight || overlay.height}
-                    style={{ cursor: isDrawing ? 'crosshair' : 'default', pointerEvents: 'auto' }}
-                    onMouseDown={(e) => {
-                      if (overlay.id === activeOverlay && isDrawing) {
-                        e.stopPropagation();
-                        handleDrawingMouseDown(e);
-                      }
-                    }}
-                    onMouseMove={(e) => {
-                      if (overlay.id === activeOverlay && isDrawing) {
-                        e.stopPropagation();
-                        handleDrawingMouseMove(e);
-                      }
-                    }}
-                    onMouseUp={(e) => {
-                      if (overlay.id === activeOverlay && isDrawing) {
-                        e.stopPropagation();
-                        handleDrawingMouseUp();
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (overlay.id === activeOverlay && isDrawing) {
-                        e.stopPropagation();
-                        handleDrawingMouseUp();
-                      }
-                    }}
-                  />
-                )}
-                {activeOverlay === overlay.id && (
-                  <>
-                    {/* Edge resize zones */}
-                    <div
-                      className="absolute cursor-n-resize"
-                      style={{ top: -4, left: 0, right: 0, height: 10 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'n')}
-                    />
-                    <div
-                      className="absolute cursor-s-resize"
-                      style={{ bottom: -4, left: 0, right: 0, height: 10 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 's')}
-                    />
-                    <div
-                      className="absolute cursor-w-resize"
-                      style={{ top: 0, left: -4, bottom: 0, width: 10 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'w')}
-                    />
-                    <div
-                      className="absolute cursor-e-resize"
-                      style={{ top: 0, right: -4, bottom: 0, width: 10 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'e')}
-                    />
-                    {/* Corner resize handles */}
-                    <div
-                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-nw-resize"
-                      style={{ top: -5, left: -5 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'nw')}
-                    />
-                    <div
-                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-ne-resize"
-                      style={{ top: -5, right: -5 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'ne')}
-                    />
-                    <div
-                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-sw-resize"
-                      style={{ bottom: -5, left: -5 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'sw')}
-                    />
-                    <div
-                      className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full shadow-sm cursor-se-resize"
-                      style={{ bottom: -5, right: -5 }}
-                      onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, 'se')}
-                    />
-                  </>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       </div>
