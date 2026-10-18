@@ -4,6 +4,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      preflight:
+        description: Read-only account, Pages, Worker and Supabase health checks
+        type: boolean
+        default: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -12,13 +17,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Read-only Cloudflare migration preflight
+        if: github.event_name == 'workflow_dispatch' && inputs.preflight
+        run: node scripts/cloudflare-preflight.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       - run: npm ci
+        if: github.event_name != 'workflow_dispatch' || !inputs.preflight
       - name: Build
+        if: github.event_name != 'workflow_dispatch' || !inputs.preflight
         run: npm run cf:build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       - name: Deploy to Cloudflare Workers
+        if: github.event_name != 'workflow_dispatch' || !inputs.preflight
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
