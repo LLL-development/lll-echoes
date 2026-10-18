@@ -36,9 +36,9 @@ test('Pages inventory follows pagination so later projects are not missed', asyn
   const output = await runPreflight({ env: { CLOUDFLARE_API_TOKEN: 'secret', CLOUDFLARE_ACCOUNT_ID: 'account' }, fetcher: async url => {
     const u = new URL(url);
     const page = Number(u.searchParams.get('page') || 1);
-    return { ok: true, status: 200, json: async () => ({ success: true, result: u.pathname.endsWith('/pages/projects') ? [{ name: `project-${page}` }] : [], result_info: u.pathname.endsWith('/pages/projects') ? { total_pages: 2 } : {} }) };
+    return { ok: true, status: 200, json: async () => ({ success: true, result: u.pathname.endsWith('/pages/projects') ? [{ name: page === 1 ? 'lll-simple-qr' : 'lll-humanize' }] : [], result_info: u.pathname.endsWith('/pages/projects') ? { total_pages: 2 } : {} }) };
   } });
-  assert.deepEqual(output.pages.projects.map(project => project.name), ['project-1', 'project-2']);
+  assert.deepEqual(output.pages.projects.map(project => project.name), ['lll-simple-qr', 'lll-humanize']);
 });
 
 test('Pages uses default page size and never sends per_page', async () => {
@@ -58,4 +58,20 @@ test('HTTP errors select numeric codes without exposing messages or body fields'
   const output = await runPreflight({ env: { CLOUDFLARE_API_TOKEN: 'secret', CLOUDFLARE_ACCOUNT_ID: 'account' }, fetcher: async () => ({ ok: false, status: 400, json: async () => ({ errors: [{ code: 1001, message: marker }, { code: marker }], metadata: marker }) }) });
   assert.deepEqual(output.pages.errorCodes, [1001]);
   assert.ok(!JSON.stringify(output).includes(marker));
+});
+
+test('only target projects are inventoried and detail settings expose names/types only', async () => {
+  const marker = 'never-print-detail-value';
+  const output = await runPreflight({ env: { CLOUDFLARE_API_TOKEN: 'secret', CLOUDFLARE_ACCOUNT_ID: 'account' }, fetcher: async url => {
+    const path = new URL(url).pathname;
+    let result = [];
+    if (path.endsWith('/pages/projects')) result = [{ name: 'unrelated-project', domains: ['unrelated.pages.dev'], deployment_configs: { production: { env_vars: { UNRELATED_SECRET: { value: marker } } } } }, { name: 'lll-humanize', domains: ['lll-humanize.pages.dev'] }];
+    if (path.endsWith('/pages/projects/lll-humanize')) result = { name: 'lll-humanize', domains: ['lll-humanize.pages.dev'], deployment_configs: { production: { env_vars: { ANTHROPIC_API_KEY: { type: 'secret_text', value: marker } }, compatibility_date: '2026-08-11', compatibility_flags: ['nodejs_compat'], service_bindings: { HELPER: { service: 'helper-worker', environment: 'production' } } } } };
+    return { ok: true, status: 200, json: async () => ({ success: true, result }) };
+  } });
+  assert.deepEqual(output.pages.projects.map(project => project.name), ['lll-humanize']);
+  assert.deepEqual(output.projectDetails['lll-humanize'].productionEnv, [{ name: 'ANTHROPIC_API_KEY', type: 'secret_text' }]);
+  assert.deepEqual(output.projectDetails['lll-humanize'].serviceBindings, [{ name: 'HELPER', service: 'helper-worker', environment: 'production' }]);
+  assert.ok(!JSON.stringify(output).includes(marker));
+  assert.ok(!JSON.stringify(output).includes('UNRELATED_SECRET'));
 });

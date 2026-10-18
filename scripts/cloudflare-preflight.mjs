@@ -39,7 +39,8 @@ export async function runPreflight({ env = process.env, fetcher = fetch } = {}) 
       return { requestFailed: true };
     }
   }
-  const pages = await read('/pages/projects', projects => ({ projects: projects.map(project => ({
+  const targets = ['lll-echoes', 'lll-simple-qr', 'lll-humanize'];
+  const pages = await read('/pages/projects', projects => ({ projects: projects.filter(project => targets.includes(project.name)).map(project => ({
     name: project.name,
     domains: project.domains ?? [],
     productionBranch: project.production_branch,
@@ -51,6 +52,21 @@ export async function runPreflight({ env = process.env, fetcher = fetch } = {}) 
       commit: project.canonical_deployment.deployment_trigger?.metadata?.commit_hash,
     } : null,
   })) }));
+  const projectDetails = {};
+  for (const name of targets) {
+    projectDetails[name] = await read(`/pages/projects/${name}`, project => {
+      const production = project.deployment_configs?.production ?? {};
+      return {
+        name: project.name,
+        domains: project.domains ?? [],
+        productionBranch: project.production_branch,
+        productionEnv: Object.entries(production.env_vars ?? {}).map(([name, variable]) => ({ name, type: variable.type })).sort((a, b) => a.name.localeCompare(b.name)),
+        compatibilityDate: production.compatibility_date,
+        compatibilityFlags: production.compatibility_flags ?? [],
+        serviceBindings: Object.entries(production.service_bindings ?? {}).map(([name, binding]) => ({ name, service: binding.service, environment: binding.environment })),
+      };
+    });
+  }
   const workers = await read('/workers/scripts', scripts => ({ names: scripts.map(script => script.id).sort() }));
   const workerSettings = await read('/workers/scripts/lll-echoes/settings', settings => ({ bindings: (settings.bindings ?? []).map(binding => ({ name: binding.name, type: binding.type })) }));
   const workerDomains = await read('/workers/domains', domains => ({ domains: domains.map(domain => ({ hostname: domain.hostname, service: domain.service, environment: domain.environment })) }));
@@ -68,7 +84,7 @@ export async function runPreflight({ env = process.env, fetcher = fetch } = {}) 
       supabaseHealth = { configured: true, requestFailed: true };
     }
   }
-  return { pages, workers, workerSettings, workerDomains, supabaseHealth };
+  return { pages, projectDetails, workers, workerSettings, workerDomains, supabaseHealth };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
