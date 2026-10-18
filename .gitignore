@@ -37,6 +37,8 @@ next-env.d.ts
 
 # cloudflare
 .wrangler/
+.open-next/
+.dev.vars*
 
 # html files should NOT be ignored
 # .html

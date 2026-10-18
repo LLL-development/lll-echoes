@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getClientIp } from '@/lib/validation';
 
-export const runtime = 'edge';
 
 // Coarse flood guard: counts ALL walls created globally in the last hour.
 // Not per-IP (that would require a new table), but sufficient to throttle
