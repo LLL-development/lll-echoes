@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { uploadImage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
-export const runtime = 'edge';
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/webp', 'image/png', 'image/jpeg', 'image/jpg'];

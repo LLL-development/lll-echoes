@@ -7,32 +7,49 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "cf:build": "next build && npx @cloudflare/next-on-pages",
-    "db:push": "npx supabase db push"
+    "typecheck": "tsc --noEmit",
+    "cf:build": "opennextjs-cloudflare build",
+    "db:push": "npx supabase db push",
+    "cf:preview": "opennextjs-cloudflare preview"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.12",
     "@supabase/supabase-js": "^2.47.0",
     "html2canvas": "^1.4.1",
     "jsdom": "^29.1.1",
-    "next": "^15.4.11",
+    "next": "^15.5.28",
     "next-intl": "^4.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "satori": "^0.29.0"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16",
-    "@cloudflare/workers-types": "^4.20260702.1",
+    "@cloudflare/workers-types": "^5.20261018.1",
     "@eslint/eslintrc": "^3.0.0",
     "@types/jsdom": "^28.0.3",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.5.4",
+    "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.1.0",
+    "eslint-config-next": "^15.5.28",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.7.0",
-    "wrangler": "^3.114.17"
+    "wrangler": "^4.151.1"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.23"
+    },
+    "@node-minify/core": {
+      "glob": "10.5.0"
+    },
+    "tailwindcss": {
+      "postcss-selector-parser": "7.1.6"
+    },
+    "postcss-nested": {
+      "postcss-selector-parser": "7.1.6"
+    }
   }
 }

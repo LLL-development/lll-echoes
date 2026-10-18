@@ -3,7 +3,6 @@ import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
 
 
-export const runtime = 'edge';
 
 export async function GET(
   request: NextRequest,

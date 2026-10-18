@@ -17,7 +17,7 @@ A free, no-login community wall where anyone can create interactive note walls b
 ## Tech Stack
 
 - **Frontend:** Next.js 15 (App Router) + TypeScript
-- **Hosting:** Cloudflare Pages (via `@cloudflare/next-on-pages`)
+- **Hosting:** Cloudflare Workers (via `@opennextjs/cloudflare`)
 - **Database:** Supabase Postgres
 - **Storage:** Supabase Storage
 - **Rendering:** html2canvas (client-side notepad export)
@@ -26,7 +26,7 @@ A free, no-login community wall where anyone can create interactive note walls b
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.17+ (Node.js 22 is used in CI)
 - A Supabase project (free tier works)
 
 ### Installation
@@ -50,7 +50,12 @@ A free, no-login community wall where anyone can create interactive note walls b
    ```
 
 4. Set up the database:
-   Run the SQL migration in `supabase/migrations/001_initial.sql` in your Supabase SQL editor.
+   In your Supabase SQL editor, apply **all** files in `supabase/migrations/`
+   in filename order (`001_initial.sql` through `016_walls_update_policy.sql`).
+   Apply each migration once and keep track of the files already applied; some
+   migrations create tables or policies and cannot be rerun unchanged.
+   The initial migration alone is insufficient: later files add required wall
+   settings, note content, anonymous grants, and row-level security policies.
 
 5. Run the development server:
    ```bash
@@ -61,17 +66,73 @@ A free, no-login community wall where anyone can create interactive note walls b
 
 ### Build for production
 
+Keep the Supabase environment variables from step 3 available during the build.
+You can check TypeScript independently of those service credentials with
+`npm run typecheck`.
+
 ```bash
 npm run build
 ```
 
-### Deploy to Cloudflare Pages
+### Build and preview for Cloudflare Workers
 
 ```bash
 npm run cf:build
 ```
 
-Then connect the repo to Cloudflare Pages or upload the `.vercel/output` directory.
+The OpenNext build creates `.open-next/worker.js` and `.open-next/assets`.
+Preview that build locally in the Workers runtime with:
+
+```bash
+npm run cf:preview
+```
+
+Set the Supabase variables before `cf:build` too: Next.js embeds `NEXT_PUBLIC_*`
+values during compilation. Use a real Supabase project for database-backed testing.
+Local `.env.local` / `.dev.vars` files are ignored by Git.
+
+The build tooling explicitly includes `esbuild`: the OpenNext CLI imports it
+directly, so relying on a transitive copy can fail after a clean `npm ci`.
+
+This repository now targets a Worker named `lll-echoes`, rather than the legacy
+Cloudflare Pages output. The deployment workflow uses `wrangler deploy --keep-vars`.
+This preserves variables already configured on that Worker; it does **not** copy
+Pages environment variables or secrets to a new Worker.
+
+Before switching production traffic, configure the new Worker manually in the
+Cloudflare dashboard and copy any existing runtime limits that should be retained:
+
+| Worker runtime variable | Purpose |
+|-------------------------|---------|
+| `ECHOES_WALLS_PER_HOUR_LIMIT` | Global wall creation limit per hour in production |
+| `ECHOES_MAX_NOTES_PER_WALL` | Maximum number of notes on each wall |
+| `ECHOES_NOTES_PER_HOUR_LIMIT` | Note creation limit per wall per hour |
+
+The Supabase connection is configured separately at **build time**. Set the GitHub
+repository secrets `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`;
+the workflow passes these to `cf:build`, and Next.js embeds them in the output.
+Copying them only into Worker runtime settings will not update the compiled client.
+Use the intended Supabase project URL and its public anonymous key. If overriding
+`NEXT_PUBLIC_APP_URL` for settings/OG image requests, supply the public app origin
+at build time too; the current workflow only forwards the two Supabase secrets,
+so explicitly add that app URL to its build environment when needed.
+
+The existing GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` select
+the deployment account. The token must have permission to deploy Workers; a token
+that only deploys Pages is insufficient. Configure or verify those permissions
+separately before deployment.
+
+Pages custom domains and production traffic are not moved automatically. Supabase
+database contents, policies, and Storage objects (the `notepads` bucket) are also
+not copied or provisioned by this Worker deployment. Keep the intended existing
+Supabase project, or migrate its data/storage separately and apply the database
+setup above for a new project. Building and previewing do not deploy or migrate
+any of these resources.
+
+Wall data uses dynamic rendering. This minimal configuration adds no persistent
+ISR cache, R2 bucket, or image service; image optimization remains disabled in
+`next.config.ts`. If cached server data or ISR is added later, configure the
+[OpenNext cache bindings](https://opennext.js.org/cloudflare/caching) first.
 
 ## Project Structure
 
