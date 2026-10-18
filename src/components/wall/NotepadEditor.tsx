@@ -800,16 +800,6 @@ export default function NotepadEditor({ imageUrl, themeName, onClose, onSave, in
                   }
                   handleOverlayMouseDown(e, overlay.id);
                 }}
-                onMouseMove={(e) => {
-                  if (overlay.type === 'text' || overlay.type === 'image' || overlay.type === 'pen') {
-                    handleOverlayMouseMove(e, overlay.id);
-                  }
-                }}
-                onMouseUp={(e) => {
-                  if (overlay.type === 'text' || overlay.type === 'image' || overlay.type === 'pen') {
-                    handleOverlayMouseUp(e, overlay.id);
-                  }
-                }}
               >
                 {overlay.type === 'text' ? (
                   <textarea

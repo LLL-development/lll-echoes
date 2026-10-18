@@ -50,7 +50,12 @@ A free, no-login community wall where anyone can create interactive note walls b
    ```
 
 4. Set up the database:
-   Run the SQL migration in `supabase/migrations/001_initial.sql` in your Supabase SQL editor.
+   In your Supabase SQL editor, apply **all** files in `supabase/migrations/`
+   in filename order (`001_initial.sql` through `016_walls_update_policy.sql`).
+   Apply each migration once and keep track of the files already applied; some
+   migrations create tables or policies and cannot be rerun unchanged.
+   The initial migration alone is insufficient: later files add required wall
+   settings, note content, anonymous grants, and row-level security policies.
 
 5. Run the development server:
    ```bash
@@ -60,6 +65,10 @@ A free, no-login community wall where anyone can create interactive note walls b
     Open [http://localhost:3500](http://localhost:3500) in your browser.
 
 ### Build for production
+
+Keep the Supabase environment variables from step 3 available during the build.
+You can check TypeScript independently of those service credentials with
+`npm run typecheck`.
 
 ```bash
 npm run build

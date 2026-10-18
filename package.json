@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "cf:build": "next build && npx @cloudflare/next-on-pages",
     "db:push": "npx supabase db push"
   },
