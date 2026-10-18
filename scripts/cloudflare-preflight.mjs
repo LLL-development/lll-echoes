@@ -13,9 +13,18 @@ export async function runPreflight({ env = process.env, fetcher = fetch } = {}) 
       const all = [];
       let totalPages = 1;
       for (let page = 1; page <= totalPages; page++) {
-        const url = base + path + (paginated ? `?per_page=100&page=${page}` : '');
+        const url = base + path + (paginated && page > 1 ? `?page=${page}` : '');
         const response = await fetcher(url, { method: 'GET', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(25000) });
-        if (!response.ok) return { httpStatus: response.status };
+        if (!response.ok) {
+          let errorCodes = [];
+          try {
+            const errorBody = await response.json();
+            errorCodes = (errorBody.errors ?? []).map(error => error.code).filter(Number.isSafeInteger);
+          } catch {
+            // Non-JSON failures still retain their HTTP status; never print bodies.
+          }
+          return { httpStatus: response.status, errorCodes };
+        }
         const body = await response.json();
         if (!body.success) return { httpStatus: response.status, apiSuccess: false };
         if (!paginated) return { httpStatus: response.status, ...select(body.result) };

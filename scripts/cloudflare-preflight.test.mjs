@@ -40,3 +40,22 @@ test('Pages inventory follows pagination so later projects are not missed', asyn
   } });
   assert.deepEqual(output.pages.projects.map(project => project.name), ['project-1', 'project-2']);
 });
+
+test('Pages uses default page size and never sends per_page', async () => {
+  const pagesURLs = [];
+  await runPreflight({ env: { CLOUDFLARE_API_TOKEN: 'secret', CLOUDFLARE_ACCOUNT_ID: 'account' }, fetcher: async url => {
+    const u = new URL(url);
+    if (u.pathname.endsWith('/pages/projects')) pagesURLs.push(u);
+    return { ok: true, status: 200, json: async () => ({ success: true, result: [], result_info: u.pathname.endsWith('/pages/projects') ? { total_pages: 2 } : {} }) };
+  } });
+  assert.equal(pagesURLs.length, 2);
+  assert.ok(pagesURLs.every(url => !url.searchParams.has('per_page')));
+  assert.equal(pagesURLs[1].searchParams.get('page'), '2');
+});
+
+test('HTTP errors select numeric codes without exposing messages or body fields', async () => {
+  const marker = 'do-not-print-response';
+  const output = await runPreflight({ env: { CLOUDFLARE_API_TOKEN: 'secret', CLOUDFLARE_ACCOUNT_ID: 'account' }, fetcher: async () => ({ ok: false, status: 400, json: async () => ({ errors: [{ code: 1001, message: marker }, { code: marker }], metadata: marker }) }) });
+  assert.deepEqual(output.pages.errorCodes, [1001]);
+  assert.ok(!JSON.stringify(output).includes(marker));
+});
