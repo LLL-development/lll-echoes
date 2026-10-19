@@ -1,0 +1,20 @@
+{
+  "upstream": {
+    "name": "braces",
+    "version": "3.0.3",
+    "registry": "https://registry.npmjs.org/braces/3.0.3",
+    "tarball": "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz",
+    "integrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==",
+    "shasum": "490332f40919452272d55a8480adc0c441358789",
+    "gitHead": "74b2db2938fad48a2ea54a9c8bf27a37a62c350d"
+  },
+  "fork": "@lll-echoes/braces",
+  "advisories": [
+    "GHSA-vfj7-8cjw-p6xm"
+  ],
+  "tests": [
+    "tests/braces-security.cjs"
+  ],
+  "updatePolicy": "Compare each patched source and generated browser/minified entry against the recorded upstream tarball; rerun root regression and full build before updating. Restore registry packages only when all listed issues have an upstream fix.",
+  "patchSource": "Reviewed bounded fork reused from leborn-dev/leng vendor/security/braces (2026-10-19); upstream source, license and guards unchanged."
+}

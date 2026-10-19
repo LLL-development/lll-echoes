@@ -17,6 +17,9 @@ on:
 concurrency:
   group: cloudflare-echoes-release
   cancel-in-progress: false
+permissions:
+  contents: read
+
 jobs:
   deploy:
     if: github.event_name != 'workflow_dispatch' || inputs.bridge_stage == 'none'
