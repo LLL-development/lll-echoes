@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "cf:build": "opennextjs-cloudflare build",
     "db:push": "npx supabase db push",
-    "cf:preview": "opennextjs-cloudflare preview"
+    "cf:preview": "opennextjs-cloudflare preview",
+    "test:security": "node --test tests/*.mjs tests/*.cjs"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.12",
@@ -36,7 +37,8 @@
     "eslint-config-next": "^15.5.28",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.7.0",
-    "wrangler": "^4.151.1"
+    "wrangler": "^4.151.1",
+    "braces": "file:vendor/security/braces"
   },
   "overrides": {
     "next": {
@@ -50,6 +52,7 @@
     },
     "postcss-nested": {
       "postcss-selector-parser": "7.1.6"
-    }
+    },
+    "braces": "$braces"
   }
 }
